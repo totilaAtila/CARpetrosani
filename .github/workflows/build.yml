@@ -23,7 +23,7 @@ jobs:
         
     - name: Build application
       run: |
-        pyinstaller --onefile --windowed main.py
+        pyinstaller --onefile --windowed car_dbf_converter_widget.py
         
     - name: Upload built app
       uses: actions/upload-artifact@v4
