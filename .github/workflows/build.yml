@@ -1,7 +1,7 @@
 name: Build macOS App
 
 on:
-  workflow_dispatch:  # Permite rularea manuală
+  workflow_dispatch:
 
 jobs:
   build-macos:
@@ -21,9 +21,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install PyQt5 pyinstaller
         
-    - name: Build application
+    - name: Build application for macOS
       run: |
-        pyinstaller --onefile --windowed main.py
+        pyinstaller --onefile --windowed \
+          --name "CARpetrosani" \
+          --add-data "main.ui:." \
+          --hidden-import PyQt5.QtWidgets \
+          --hidden-import PyQt5.QtCore \
+          --hidden-import PyQt5.QtGui \
+          main.py
         
     - name: Upload built app
       uses: actions/upload-artifact@v4
