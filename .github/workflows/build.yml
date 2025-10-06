@@ -21,14 +21,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install PyQt5 pyinstaller
         
-    - name: Build application for macOS
+    - name: Build application
       run: |
-        pyinstaller --onefile --windowed \
+        pyinstaller --windowed \
           --name "CARpetrosani" \
           --add-data "main.ui:." \
-          --hidden-import PyQt5.QtWidgets \
-          --hidden-import PyQt5.QtCore \
-          --hidden-import PyQt5.QtGui \
+          --add-data "ui:ui" \
+          --add-data "fonts:fonts" \
+          --add-data "icons:icons" \
+          --add-data "dialog_styles.py:." \
           main.py
         
     - name: Upload built app
