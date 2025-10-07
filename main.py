@@ -2,6 +2,10 @@
 from PyQt5.QtCore import Qt
 import sys
 import os
+# === ADAUGĂ ACEST COD ÎNAINTE DE ORICE ALTCEVA ===
+if sys.platform == "darwin":
+    os.environ["QT_MAC_WANTS_LAYER"] = "1"
+# === Sfârșit cod adăugat ===
 from PyQt5.QtWidgets import QApplication
 
 

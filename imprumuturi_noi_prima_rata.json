@@ -1,0 +1,192 @@
+{
+  "mod": "prima_rata",
+  "luna": 7,
+  "anul": 2025,
+  "data_detectare": "2025-10-05 19:48:04",
+  "total_imprumuturi": 26,
+  "suma_totala": 105297.99,
+  "imprumuturi": [
+    {
+      "nr_fisa": 565,
+      "num_pren": "BICA INGRID ANDREEA",
+      "suma": 1213.71,
+      "impr_sold": 1213.71,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 712,
+      "num_pren": "ARON VASILE",
+      "suma": 47504.91,
+      "impr_sold": 47504.91,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1114,
+      "num_pren": "STEGARESCU CONSTANTIN",
+      "suma": 2022.86,
+      "impr_sold": 2022.86,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1229,
+      "num_pren": "STEGARESCU EUGENIA",
+      "suma": 2022.86,
+      "impr_sold": 2022.86,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1230,
+      "num_pren": "STEGARESCU MARIA ANDREEA",
+      "suma": 2022.86,
+      "impr_sold": 2022.86,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1531,
+      "num_pren": "ALEXA MARIA",
+      "suma": 1011.43,
+      "impr_sold": 1011.43,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1601,
+      "num_pren": "CIULE CLAUDIU PAUL",
+      "suma": 2528.57,
+      "impr_sold": 2528.57,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1684,
+      "num_pren": "CIOLAN OLGA",
+      "suma": 3034.29,
+      "impr_sold": 3034.29,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1736,
+      "num_pren": "ROGOBETE VASILICA",
+      "suma": 2022.86,
+      "impr_sold": 2022.86,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1802,
+      "num_pren": "ANDRONACHE ION",
+      "suma": 5057.15,
+      "impr_sold": 5057.15,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 1846,
+      "num_pren": "ALBOIU DORINA",
+      "suma": 4045.72,
+      "impr_sold": 4045.72,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2021,
+      "num_pren": "ERKEDI ZOLTAN",
+      "suma": 3034.29,
+      "impr_sold": 3034.29,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2045,
+      "num_pren": "CIOBANU SORINEL",
+      "suma": 2022.86,
+      "impr_sold": 2022.86,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2117,
+      "num_pren": "RADUTOIU IOAN RARES",
+      "suma": 1213.71,
+      "impr_sold": 1213.71,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2126,
+      "num_pren": "SAS COSMIN CONSTANTIN",
+      "suma": 3034.29,
+      "impr_sold": 3034.29,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2223,
+      "num_pren": "PETRA VIOREL",
+      "suma": 2022.86,
+      "impr_sold": 2022.86,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2251,
+      "num_pren": "DRAGOMIR GRIGORE ALIN",
+      "suma": 1618.29,
+      "impr_sold": 1618.29,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2319,
+      "num_pren": "SELEJAN AUREL MIHAI",
+      "suma": 809.14,
+      "impr_sold": 809.14,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2324,
+      "num_pren": "BABEANU IONUT LUCIAN",
+      "suma": 2427.43,
+      "impr_sold": 2427.43,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2448,
+      "num_pren": "LUCA CRISTINA MIHAELA",
+      "suma": 3034.29,
+      "impr_sold": 3034.29,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2471,
+      "num_pren": "FILIP VALENTIN DORU",
+      "suma": 1213.71,
+      "impr_sold": 1213.71,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2473,
+      "num_pren": "COBLESCHI IULIANA CLARA",
+      "suma": 5057.15,
+      "impr_sold": 5057.15,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2481,
+      "num_pren": "ICHIM DIDI",
+      "suma": 2022.86,
+      "impr_sold": 2022.86,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2486,
+      "num_pren": "CEUTA MIRELA IOANA",
+      "suma": 4045.72,
+      "impr_sold": 4045.72,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2559,
+      "num_pren": "HOSTINA CRISTI GABRIEL",
+      "suma": 1011.43,
+      "impr_sold": 1011.43,
+      "procesat": false
+    },
+    {
+      "nr_fisa": 2562,
+      "num_pren": "MILITARU ADINA",
+      "suma": 242.74,
+      "impr_sold": 242.74,
+      "procesat": false
+    }
+  ]
+}
