@@ -6,34 +6,45 @@ on:
 jobs:
   build-macos:
     runs-on: macos-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
-        
+        python-version: '3.13'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install PyQt5 pyinstaller
+        pip install -r requirements.txt
         
-    - name: Build application
+    - name: Verify directory structure
       run: |
-        pyinstaller --windowed \
-          --name "CARpetrosani" \
-          --add-data "main.ui:." \
-          --add-data "ui:ui" \
-          --add-data "fonts:fonts" \
-          --add-data "icons:icons" \
-          --add-data "dialog_styles.py:." \
-          main.py
+        echo "=== Verificare structură directoare ==="
+        ls -la
+        echo "=== Conținut director ui ==="
+        ls -la ui/
+        echo "=== Fișiere de configurare JSON ==="
+        ls -la *.json
         
-    - name: Upload built app
+    - name: Build application with spec file
+      run: |
+        pyinstaller CARpetrosani.spec
+        
+    - name: Verify build output
+      run: |
+        echo "=== Conținut director dist ==="
+        ls -la dist/
+        echo "=== Conținut aplicație ==="
+        ls -la dist/CARpetrosani.app/Contents/
+        echo "=== Conținut MacOS ==="
+        ls -la dist/CARpetrosani.app/Contents/MacOS/
+        
+    - name: Upload app bundle
       uses: actions/upload-artifact@v4
       with:
-        name: CARpetrosani-MacOS
-        path: dist/
+        name: CARpetrosani-macOS
+        path: dist/CARpetrosani.app
