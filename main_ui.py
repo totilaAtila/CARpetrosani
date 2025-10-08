@@ -644,7 +644,7 @@ class CurrencyToggleWidget(QWidget):
         super().__init__(parent)
         self.currency_logic = currency_logic
         self.theme_manager = theme_manager
-        self.setFixedHeight(80)
+        self.setFixedHeight(95)  # ← MĂRIT de la 80 la 95 pentru spațiu suficient
         self._setup_ui()
         self._connect_signals()
         self._update_display()
@@ -653,7 +653,7 @@ class CurrencyToggleWidget(QWidget):
         """Configurează interfața"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 5, 10, 5)
-        layout.setSpacing(5)
+        layout.setSpacing(6)  # ← REDUS de la 5 pentru mai mult spațiu label
 
         # Separator vizual
         separator = QFrame()
@@ -666,7 +666,8 @@ class CurrencyToggleWidget(QWidget):
         button_container.setSpacing(8)
         button_container.setContentsMargins(5, 0, 5, 0)
 
-
+        # Spacer pentru centrare butoane
+        button_container.addStretch()
 
         # Buton RON
         self.ron_btn = QPushButton("RON")
@@ -682,15 +683,16 @@ class CurrencyToggleWidget(QWidget):
         self.eur_btn.setFont(QFont("Arial", 9, QFont.Bold))
         button_container.addWidget(self.eur_btn)
 
-        # Spacer pentru alinierea la stânga
+        # Spacer pentru alinierea finală
         button_container.addStretch()
 
         layout.addLayout(button_container)
 
         # Indicator permisiuni pe al doilea rând
         self.permission_label = QLabel()
-        self.permission_label.setFont(QFont("Arial", 8))
-        self.permission_label.setStyleSheet("color: #7F8C8D; font-style: italic; margin-left: 40px;")
+        self.permission_label.setFont(QFont("Arial", 9, QFont.Bold))  # ← REDUS de la 10pt la 9pt
+        self.permission_label.setAlignment(Qt.AlignCenter)
+        self.permission_label.setMinimumHeight(32)  # ← ASIGURĂ înălțime minimă pentru text
         layout.addWidget(self.permission_label)
 
     def _connect_signals(self):
@@ -714,7 +716,6 @@ class CurrencyToggleWidget(QWidget):
         active_style = f"background: qlineargradient(x1:0, y1:0, x2:0, y2:1, {theme['menu_active'][0]}); color: white; border: 2px solid {theme['menu_active'][1]};"
         inactive_style = f"background: qlineargradient(x1:0, y1:0, x2:0, y2:1, {theme['menu_gradient'][0]}); color: {theme['menu_text']}; border: 1px solid {theme['menu_border']};"
         disabled_style = "background-color: #d3d3d3; color: #808080; border: 1px solid #a0a0a0;"
-        readonly_style = f"background: qlineargradient(x1:0, y1:0, x2:0, y2:1, {theme['menu_gradient'][1]}); color: {theme['menu_text']}; border: 1px dashed {theme['menu_border']};"
 
         # Aplicarea stilurilor RON
         if current_currency == 'RON':
@@ -742,9 +743,24 @@ class CurrencyToggleWidget(QWidget):
         # Actualizarea indicatorului de permisiuni
         permission_text = "Citire-Scriere" if can_write else "Doar Citire"
         permission_color = "#27AE60" if can_write else "#E67E22"
-        self.permission_label.setText(f"{permission_text}")
-        self.permission_label.setStyleSheet(
-            f"color: {permission_color}; font-style: italic; font-size: 8pt; margin-left: 40px;")
+        icon = "✅" if can_write else "🔒"
+
+        # Setare text cu icon
+        self.permission_label.setText(f"{icon} {permission_text}")
+
+        # Stil tip card modern - OPTIMIZAT pentru evitarea text clipping
+        self.permission_label.setStyleSheet(f"""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 {'#eafaf1' if can_write else '#fdf6e3'},
+                stop:1 {'#d4efdf' if can_write else '#fbeee0'});
+            color: {permission_color};
+            font-size: 9pt;
+            font-weight: bold;
+            padding: 6px 20px;
+            border-radius: 12px;
+            margin-left: 16px;
+            margin-right: 16px;
+        """)
 
 
 class ModernButton(QPushButton):
