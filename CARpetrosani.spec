@@ -113,7 +113,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='CARpetrosani.app',
-    icon='money.ico',
+    icon='pol.ico',
     bundle_identifier='com.carpetrosani.app',
     info_plist={
         'CFBundleName': 'CARpetrosani',
