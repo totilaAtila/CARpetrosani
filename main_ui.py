@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 C.A.R. Petroșani - Interface cu Teme Plastic și Preview Real-Time + Conversie RON->EUR
 Versiunea completă cu monkey patching condițional pentru comutare dinamică RON/EUR
-VERSIUNEA ALL-IN-ONE READY FOR PRODUCTION
+VERSIUNEA ALL-IN-ONE READY FOR PRODUCTION cu Protecție Scriere
 """
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
@@ -644,7 +644,7 @@ class CurrencyToggleWidget(QWidget):
         super().__init__(parent)
         self.currency_logic = currency_logic
         self.theme_manager = theme_manager
-        self.setFixedHeight(95)  # ← MĂRIT de la 80 la 95 pentru spațiu suficient
+        self.setFixedHeight(95)
         self._setup_ui()
         self._connect_signals()
         self._update_display()
@@ -653,7 +653,7 @@ class CurrencyToggleWidget(QWidget):
         """Configurează interfața"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 5, 10, 5)
-        layout.setSpacing(6)  # ← REDUS de la 5 pentru mai mult spațiu label
+        layout.setSpacing(6)
 
         # Separator vizual
         separator = QFrame()
@@ -690,9 +690,9 @@ class CurrencyToggleWidget(QWidget):
 
         # Indicator permisiuni pe al doilea rând
         self.permission_label = QLabel()
-        self.permission_label.setFont(QFont("Arial", 9, QFont.Bold))  # ← REDUS de la 10pt la 9pt
+        self.permission_label.setFont(QFont("Arial", 9, QFont.Bold))
         self.permission_label.setAlignment(Qt.AlignCenter)
-        self.permission_label.setMinimumHeight(32)  # ← ASIGURĂ înălțime minimă pentru text
+        self.permission_label.setMinimumHeight(32)
         layout.addWidget(self.permission_label)
 
     def _connect_signals(self):
@@ -976,6 +976,14 @@ class CalculatorWindow(QMainWindow):
 class CARApp(QMainWindow):
     """Aplicația principală cu sistem dual RON/EUR prin monkey patching condițional"""
 
+    # ===== MODIFICARE 1: Constantă pentru meniuri protejate =====
+    # Meniuri care necesită permisiuni de scriere în baze de date
+    WRITE_PROTECTED_MENUS = [
+        "Actualizări",      # Submeniu întreg: Adăugare, Sume lunare, Lichidare, Ștergere, Dividende
+        "Generare lună",    # Operațiuni INSERT masive pentru lună nouă
+        "Optimizare baze"   # Operațiuni structurale VACUUM/REINDEX
+    ]
+
     def __init__(self):
         super().__init__()
 
@@ -991,7 +999,7 @@ class CARApp(QMainWindow):
         self.imprumuturi_noi_window = None
         self.menu_buttons = {}
         self.submenu_buttons = []
-        self.current_submenu_text = None  # Track current submenu
+        self.current_submenu_text = None
 
         # Setup interfață
         self._setup_main_window()
@@ -1002,23 +1010,25 @@ class CARApp(QMainWindow):
         # Încarcă widget-ul inițial de statistici
         self._load_initial_stats_widget()
 
-        # Încarcă primul submeniu
-        #self.load_submenu(["Adăugare membru", "Sume lunare", "Lichidare membru", "Ștergere membru", "Dividende"])
+        # ===== MODIFICARE 5: Setare inițială permisiuni =====
+        self._update_menu_write_permissions()
 
         self.show()
 
     def _on_currency_changed(self, currency):
         """Gestionează schimbarea monedei"""
         print(f"--- Schimbare monedă către: {currency} ---")
+        
         # RE-PATCH toate modulele deja încărcate
         self._repatch_loaded_modules()
+
+        # ===== MODIFICARE 3: Actualizare permisiuni după schimbare monedă =====
+        self._update_menu_write_permissions()
 
         # Reîncarcă widget-ul curent dacă este sensibil la monedă
         if hasattr(self, 'current_submenu_text') and self.current_submenu_text:
             self.on_submenu_clicked(self.current_submenu_text, force_reload=True)
-        # Pentru Listări din meniul principal
         elif any(btn.is_active for btn in self.menu_buttons.values() if btn.text().endswith("Listări")):
-            # Reîncarcă Listări în noua monedă
             self.menu_buttons["Listări"].click()
 
     def _repatch_loaded_modules(self):
@@ -1073,6 +1083,72 @@ class CARApp(QMainWindow):
 
         print(f"✅ Re-patching completat: {patched_count} atribute modificate")
 
+    # ===== MODIFICARE 2: Metodă pentru actualizare permisiuni meniuri =====
+    def _update_menu_write_permissions(self):
+        """Actualizează starea meniurilor în funcție de permisiunile de scriere"""
+        can_write = self.currency_logic.can_write_data()
+        current_currency = self.currency_logic.get_current_currency()
+        is_conversion_applied = self.conversie_checker.is_conversion_applied()
+        
+        # Determină starea de protecție
+        is_write_protected = is_conversion_applied and current_currency == "RON"
+        
+        # Actualizează fiecare meniu protejat
+        for menu_name in self.WRITE_PROTECTED_MENUS:
+            if menu_name in self.menu_buttons:
+                button = self.menu_buttons[menu_name]
+                button.setEnabled(can_write)
+                
+                # Actualizează tooltip-ul cu informații despre restricție
+                if is_write_protected:
+                    original_tooltip = button.toolTip().split('\n')[0]
+                    button.setToolTip(
+                        f"{original_tooltip}\n\n"
+                        f"🔒 RESTRICȚIONAT în modul RON post-conversie\n"
+                        f"Comută la EUR pentru operațiuni de scriere"
+                    )
+                    
+                    # Aplicare stil vizual pentru buton dezactivat
+                    theme = self.theme_manager.get_current_theme()
+                    button.setStyleSheet(f"""
+                        QPushButton {{
+                            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 rgba(189, 195, 199, 150), stop:1 rgba(149, 165, 166, 170));
+                            border: 1px solid rgba(127, 140, 141, 150);
+                            border-radius: 8px;
+                            padding: 4px 12px;
+                            font-size: 10pt;
+                            color: rgba(52, 73, 94, 150);
+                            text-align: left;
+                            font-weight: normal;
+                            backdrop-filter: blur(5px);
+                        }}
+                        QPushButton:disabled {{
+                            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 rgba(189, 195, 199, 120), stop:1 rgba(149, 165, 166, 140));
+                            color: rgba(127, 140, 141, 180);
+                        }}
+                    """)
+                else:
+                    # Restaurează tooltip-ul original
+                    shortcuts_map = {
+                        "Actualizări": "Alt+A",
+                        "Generare lună": "Alt+G",
+                        "Optimizare baze": "Alt+O"
+                    }
+                    shortcut = shortcuts_map.get(menu_name, "")
+                    tooltip = menu_name
+                    if shortcut:
+                        tooltip += f"\nScurtătură: {shortcut}"
+                    button.setToolTip(tooltip)
+                    
+                    # Restaurează stilul normal
+                    button.update_style()
+        
+        # Log pentru debugging
+        status = "RESTRICȚIONAT" if is_write_protected else "PERMIS"
+        print(f"📝 Permisiuni scriere actualizate: {status} (Monedă: {current_currency}, Conversie: {is_conversion_applied})")
+
     def _setup_main_window(self):
         """Configurează fereastra principală"""
         self.setGeometry(100, 100, 1200, 800)
@@ -1092,7 +1168,7 @@ class CARApp(QMainWindow):
         main_layout = QVBoxLayout(main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Splitter principal (CustomTitleWidget eliminat complet)
+        # Splitter principal
         self.splitter = QSplitter(Qt.Horizontal)
         main_layout.addWidget(self.splitter)
 
@@ -1226,7 +1302,7 @@ class CARApp(QMainWindow):
         """)
 
     def update_window_title(self):
-        """Actualizează titlul ferestrei - simplificat fără tema curentă"""
+        """Actualizează titlul ferestrei"""
         current_date = QDateTime.currentDateTime().toString("dd/MM/yyyy")
         current_time = QDateTime.currentDateTime().toString("HH:mm:ss")
         spaces = " " * (self.width() // 10)
@@ -1237,7 +1313,7 @@ class CARApp(QMainWindow):
 
     def on_submenu_clicked(self, text, force_reload=False):
         """Gestionează click-urile pe submeniu - cu suport pentru dual currency"""
-        self.current_submenu_text = text  # Track current submenu
+        self.current_submenu_text = text
         current_currency = self.currency_logic.get_current_currency()
         widget_key = f"{text}_{current_currency}"
 
@@ -1277,7 +1353,7 @@ class CARApp(QMainWindow):
 
     def revino_la_statistici(self):
         """Revine la statistici"""
-        self.current_submenu_text = None  # Reset current submenu tracking
+        self.current_submenu_text = None
         self.submenu_bar.setVisible(False)
         self.animate_transition_to(self.statistici_widget)
         self.statistici_widget.load_data()
@@ -1287,16 +1363,32 @@ class CARApp(QMainWindow):
 
     def menu_clicked(self):
         """Gestionează click-urile pe meniu"""
-        for btn in self.menu_buttons.values():
-            btn.set_active(False)
-
         sender = self.sender().text()
         if " " in sender:
             sender_name = sender.split(" ", 1)[1]
         else:
             sender_name = sender
 
-        # Gestionează butoanele
+        # ===== MODIFICARE 4: Verificare permisiuni pentru meniuri protejate =====
+        if sender_name in self.WRITE_PROTECTED_MENUS:
+            if not self.currency_logic.can_write_data():
+                QMessageBox.warning(
+                    self,
+                    "Operațiune Restricționată",
+                    f"<b>{sender_name}</b> necesită permisiuni de scriere.<br><br>"
+                    f"🔒 Modul <b>RON</b> este doar pentru <b>citire</b> după aplicarea conversiei.<br><br>"
+                    f"💡 Pentru a efectua modificări:<br>"
+                    f"&nbsp;&nbsp;&nbsp;1. Comută toggle-ul la <b>EUR</b><br>"
+                    f"&nbsp;&nbsp;&nbsp;2. Efectuează operațiunile necesare<br>"
+                    f"&nbsp;&nbsp;&nbsp;3. Bazele EUR sunt activate pentru scriere completă",
+                    QMessageBox.Ok
+                )
+                return
+
+        for btn in self.menu_buttons.values():
+            btn.set_active(False)
+
+        # Gestionează butoanele speciale
         if sender_name == "Selector temă":
             self.show_theme_selector()
             self.menu_buttons["Selector temă"].set_active(True)
@@ -1373,7 +1465,6 @@ class CARApp(QMainWindow):
                                  "Afișare membri inactivi"]
             self.load_submenu(submenu_items)
         elif sender_name == "Listări":
-            # MODIFICAREA: Tratare specială pentru Listări cu suport dual-currency
             current_currency = self.currency_logic.get_current_currency()
             widget_key = f"Listări_{current_currency}"
 
@@ -1390,7 +1481,6 @@ class CARApp(QMainWindow):
             print(f"ACTIVAT: 'Listări' în modul {current_currency}")
 
         elif sender_name in ["Salvări", "Versiune", "Generare lună"]:
-            # Mapping direct pentru widget-urile care nu necesită dual-currency
             direct_mapping = {
                 "Salvări": OperatiuniSalvareWidget,
                 "Versiune": DespreWidget,
