@@ -1,4 +1,4 @@
-name: Build macOS App (Apple Silicon)
+: Build macOS App (Apple Silicon)
 
 on:
   workflow_dispatch:
@@ -26,17 +26,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install pillow openpyxl xlsxwriter reportlab PyQt5 pyinstaller
         
-        # Verificare module
         python -c "
         import sys
-        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL']
+        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL', 'decimal']
+        errors = []
         for module in modules:
             try:
                 __import__(module)
                 print(f'✅ {module}')
             except ImportError as e:
                 print(f'❌ {module}: {e}')
-                sys.exit(1)
+                errors.append(module)
+        if errors:
+            sys.exit(1)
         print('✅ All modules verified')
         "
         
@@ -70,7 +72,6 @@ jobs:
         
         echo "Building for Apple Silicon (arm64)..."
         
-        # Build FĂRĂ universal2 - doar pentru arhitectura curentă (arm64)
         pyinstaller --noconfirm --onedir --windowed \
           --icon "pol.icns" \
           --name "CARpetrosani" \
@@ -82,13 +83,19 @@ jobs:
           --add-data "DejaVuSans-Bold.ttf:." \
           --hidden-import openpyxl \
           --hidden-import openpyxl.cell \
+          --hidden-import openpyxl.cell.cell \
           --hidden-import openpyxl.styles \
+          --hidden-import openpyxl.styles.numbers \
+          --hidden-import openpyxl.utils \
           --hidden-import xlsxwriter \
           --hidden-import xlsxwriter.workbook \
+          --hidden-import xlsxwriter.worksheet \
           --hidden-import et_xmlfile \
           --hidden-import reportlab \
           --hidden-import reportlab.lib \
           --hidden-import reportlab.lib.colors \
+          --hidden-import reportlab.lib.pagesizes \
+          --hidden-import reportlab.lib.units \
           --hidden-import reportlab.pdfgen \
           --hidden-import reportlab.pdfgen.canvas \
           --hidden-import reportlab.pdfbase \
@@ -106,27 +113,57 @@ jobs:
         echo "=== Build Verification ==="
         
         if [ ! -d "dist/CARpetrosani.app" ]; then
-          echo "❌ .app bundle NOT found!"
+          echo "❌ App bundle NOT found!"
+          echo "Contents of dist/:"
+          ls -la dist/ || echo "dist/ doesn't exist"
           exit 1
         fi
         
-        echo "✅ .app bundle created"
+        echo "✅ App bundle exists"
         
-        # Verifică arhitectura
-        echo -e "\n=== Architecture ==="
+        if [ ! -f "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani" ]; then
+          echo "❌ Executable NOT found!"
+          exit 1
+        fi
+        
+        echo "✅ Executable exists"
+        
+        echo ""
+        echo "=== Architecture ==="
         file "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani"
-        lipo -info "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani"
+        lipo -info "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani" || echo "Single architecture"
         
-        echo -e "\n=== Size ==="
+        echo ""
+        echo "=== Bundle Size ==="
         du -sh "dist/CARpetrosani.app"
+        
+        echo ""
+        echo "=== Critical Modules Check ==="
+        for module in openpyxl xlsxwriter reportlab PyQt5; do
+          if find "dist/CARpetrosani.app" -name "*${module}*" -type f | head -1 | grep -q .; then
+            echo "✅ $module found in bundle"
+          else
+            echo "⚠️  $module not found in bundle"
+          fi
+        done
         
     - name: Fix macOS Security
       run: |
+        echo "Removing quarantine attributes..."
         xattr -cr dist/CARpetrosani.app
-        codesign --force --deep --sign - dist/CARpetrosani.app
-        echo "✅ Security fixed"
         
-    - name: Create Distribution
+        echo "Applying ad-hoc signature..."
+        codesign --force --deep --sign - dist/CARpetrosani.app
+        
+        echo ""
+        echo "=== Signature Verification ==="
+        codesign -dv dist/CARpetrosani.app 2>&1 | head -5
+        
+        echo "✅ Security attributes fixed"
+        
+    - name: Create Distribution Package
       run: |
+        echo "Creating distribution package..."
+        
         mkdir -p distribution
         cp -r dist/CARpetrosani.app distribution/
