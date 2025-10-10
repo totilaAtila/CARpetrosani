@@ -1,4 +1,4 @@
-name: Build macOS App
+name: Build macOS App (Apple Silicon)
 
 on:
   workflow_dispatch:
@@ -24,35 +24,24 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install pillow openpyxl xlsxwriter reportlab PyQt5 pyinstaller
         
-        # IMPORTANT: Pentru universal2, trebuie să instalăm Pillow care suportă ambele arhitecturi
-        # Încercăm mai întâi cu wheel universal2, apoi fallback la compilare
-        echo "Attempting to install Pillow with universal2 support..."
-        pip install pillow || pip install --no-binary=pillow pillow
-        
-        # Instalare celelalte dependențe
-        pip install openpyxl xlsxwriter reportlab PyQt5 pyinstaller
-        
-        # Verificare extensivă module
+        # Verificare module
         python -c "
         import sys
-        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL', 'decimal']
-        errors = []
+        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL']
         for module in modules:
             try:
                 __import__(module)
                 print(f'✅ {module}')
             except ImportError as e:
                 print(f'❌ {module}: {e}')
-                errors.append(module)
-        if errors:
-            sys.exit(1)
+                sys.exit(1)
         print('✅ All modules verified')
         "
         
     - name: Create ICNS from ICO
       run: |
-        # Verifică și creează fallback dacă e necesar
         if [ ! -f "pol.ico" ]; then
           echo "⚠️  pol.ico not found, creating placeholder..."
           python -c "
@@ -75,16 +64,14 @@ jobs:
         cp icon.icns pol.icns
         echo "✅ ICNS created"
         
-    - name: Build Universal Binary
+    - name: Build for Apple Silicon
       run: |
-        # Curățare build anterior
         rm -rf build dist
         
-        echo "Building Universal Binary (Intel + Apple Silicon)..."
+        echo "Building for Apple Silicon (arm64)..."
         
-        # Build cu universal2 pentru a funcționa pe TOATE Mac-urile
+        # Build FĂRĂ universal2 - doar pentru arhitectura curentă (arm64)
         pyinstaller --noconfirm --onedir --windowed \
-          --target-arch=universal2 \
           --icon "pol.icns" \
           --name "CARpetrosani" \
           --add-data "fonts:fonts" \
@@ -114,59 +101,32 @@ jobs:
         
         echo "✅ Build completed"
         
-    - name: Verify Build Structure
+    - name: Verify Build
       run: |
         echo "=== Build Verification ==="
         
         if [ ! -d "dist/CARpetrosani.app" ]; then
-          echo "❌ FAIL: .app bundle NOT found!"
-          ls -la dist/ || echo "dist/ doesn't exist"
+          echo "❌ .app bundle NOT found!"
           exit 1
         fi
         
         echo "✅ .app bundle created"
         
-        # Verifică executabilul
-        if [ ! -f "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani" ]; then
-          echo "❌ FAIL: Executable NOT found!"
-          exit 1
-        fi
-        
-        echo "✅ Executable exists"
-        
-        # Verifică arhitecturile suportate (IMPORTANT!)
-        echo -e "\n=== Architecture Support ==="
+        # Verifică arhitectura
+        echo -e "\n=== Architecture ==="
         file "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani"
-        lipo -info "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani" || echo "lipo check failed"
+        lipo -info "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani"
         
-        # Verifică dimensiune
-        echo -e "\n=== App Size ==="
+        echo -e "\n=== Size ==="
         du -sh "dist/CARpetrosani.app"
-        
-        # Verifică module critice
-        echo -e "\n=== Critical Modules Check ==="
-        for module in openpyxl xlsxwriter reportlab PyQt5; do
-          if find "dist/CARpetrosani.app" -name "*${module}*" -type f | head -1 | grep -q .; then
-            echo "✅ $module found"
-          else
-            echo "⚠️  $module not found"
-          fi
-        done
         
     - name: Fix macOS Security
       run: |
-        echo "Fixing macOS security attributes..."
         xattr -cr dist/CARpetrosani.app
-        
-        # Ad-hoc signing
         codesign --force --deep --sign - dist/CARpetrosani.app
+        echo "✅ Security fixed"
         
-        # Verifică semnătura
-        echo -e "\n=== Signature Verification ==="
-        codesign -dv dist/CARpetrosani.app 2>&1 | head -5
-        
-        echo "✅ Security flags fixed"
-        
-    - name: Create Distribution Package
+    - name: Create Distribution
       run: |
-        echo "Creating distribution package..."
+        mkdir -p distribution
+        cp -r dist/CARpetrosani.app distribution/
