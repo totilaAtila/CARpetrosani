@@ -1,4 +1,4 @@
-name : Build macOS App (Apple Silicon)
+name: Build macOS App (Apple Silicon)
 
 on:
   workflow_dispatch:
@@ -28,7 +28,7 @@ jobs:
         
         python -c "
         import sys
-        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL', 'decimal']
+        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL']
         errors = []
         for module in modules:
             try:
@@ -38,6 +38,7 @@ jobs:
                 print(f'❌ {module}: {e}')
                 errors.append(module)
         if errors:
+            print(f'❌ Failed modules: {errors}')
             sys.exit(1)
         print('✅ All modules verified')
         "
@@ -77,6 +78,7 @@ jobs:
           --name "CARpetrosani" \
           --add-data "fonts:fonts" \
           --add-data "Icons:Icons" \
+          --add-data "ui:ui" \
           --add-data "Arial.ttf:." \
           --add-data "DejaVuBoldSans.ttf:." \
           --add-data "DejaVuSans.ttf:." \
@@ -167,3 +169,18 @@ jobs:
         
         mkdir -p distribution
         cp -r dist/CARpetrosani.app distribution/
+        
+    - name: Create ZIP for Download
+      run: |
+        cd dist
+        zip -r ../CARpetrosani-macOS-arm64.zip CARpetrosani.app
+        cd ..
+        echo "✅ ZIP created: CARpetrosani-macOS-arm64.zip"
+        ls -lh CARpetrosani-macOS-arm64.zip
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CARpetrosani-macOS-arm64
+        path: CARpetrosani-macOS-arm64.zip
+        retention-days: 30
