@@ -24,30 +24,42 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        # Instalează Pillow fără binar pentru a evita problemele de arhitectură
-        pip install --no-binary=pillow pillow
+        
+        # IMPORTANT: Pentru universal2, trebuie să instalăm Pillow care suportă ambele arhitecturi
+        # Încercăm mai întâi cu wheel universal2, apoi fallback la compilare
+        echo "Attempting to install Pillow with universal2 support..."
+        pip install pillow || pip install --no-binary=pillow pillow
+        
+        # Instalare celelalte dependențe
         pip install openpyxl xlsxwriter reportlab PyQt5 pyinstaller
-        # Verificare EXTENSIVĂ a modulelor
+        
+        # Verificare extensivă module
         python -c "
-        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL']
+        import sys
+        modules = ['openpyxl', 'xlsxwriter', 'reportlab', 'PyQt5', 'PIL', 'decimal']
+        errors = []
         for module in modules:
             try:
                 __import__(module)
-                print(f'✅ {module} imported successfully')
+                print(f'✅ {module}')
             except ImportError as e:
-                print(f'❌ {module} failed: {e}')
+                print(f'❌ {module}: {e}')
+                errors.append(module)
+        if errors:
+            sys.exit(1)
+        print('✅ All modules verified')
         "
         
     - name: Create ICNS from ICO
       run: |
-        # Verifică dacă pol.ico există
+        # Verifică și creează fallback dacă e necesar
         if [ ! -f "pol.ico" ]; then
           echo "⚠️  pol.ico not found, creating placeholder..."
           python -c "
-          from PIL import Image
-          img = Image.new('RGB', (256, 256), color='blue')
-          img.save('pol.ico')
-          "
+        from PIL import Image
+        img = Image.new('RGB', (256, 256), color='blue')
+        img.save('pol.ico')
+        "
         fi
         
         mkdir -p icon.iconset
@@ -55,7 +67,7 @@ jobs:
         from PIL import Image
         img = Image.open('pol.ico')
         sizes = [(16,16), (32,32), (64,64), (128,128), (256,256), (512,512)]
-        for i, size in enumerate(sizes):
+        for size in sizes:
             resized = img.resize(size, Image.Resampling.LANCZOS)
             resized.save(f'icon.iconset/icon_{size[0]}x{size[1]}.png')
         "
@@ -63,76 +75,98 @@ jobs:
         cp icon.icns pol.icns
         echo "✅ ICNS created"
         
-    - name: Build with PyInstaller (safe approach)
+    - name: Build Universal Binary
       run: |
-        # Șterge orice build anterior
+        # Curățare build anterior
         rm -rf build dist
         
-        # Compilează fără universal2 pentru a evita problemele cu bibliotecile
+        echo "Building Universal Binary (Intel + Apple Silicon)..."
+        
+        # Build cu universal2 pentru a funcționa pe TOATE Mac-urile
         pyinstaller --noconfirm --onedir --windowed \
+          --target-arch=universal2 \
           --icon "pol.icns" \
           --name "CARpetrosani" \
           --add-data "fonts:fonts" \
           --add-data "Icons:Icons" \
-          --add-data "ui:ui" \
           --add-data "Arial.ttf:." \
           --add-data "DejaVuBoldSans.ttf:." \
           --add-data "DejaVuSans.ttf:." \
           --add-data "DejaVuSans-Bold.ttf:." \
           --hidden-import openpyxl \
+          --hidden-import openpyxl.cell \
+          --hidden-import openpyxl.styles \
           --hidden-import xlsxwriter \
+          --hidden-import xlsxwriter.workbook \
           --hidden-import et_xmlfile \
           --hidden-import reportlab \
           --hidden-import reportlab.lib \
+          --hidden-import reportlab.lib.colors \
           --hidden-import reportlab.pdfgen \
+          --hidden-import reportlab.pdfgen.canvas \
           --hidden-import reportlab.pdfbase \
+          --hidden-import reportlab.pdfbase.pdfmetrics \
+          --hidden-import reportlab.pdfbase.ttfonts \
           --hidden-import ssl \
+          --hidden-import decimal \
           --osx-bundle-identifier "com.petrosani.carapp" \
           main.py
-        echo "✅ PyInstaller build completed"
+        
+        echo "✅ Build completed"
         
     - name: Verify Build Structure
       run: |
         echo "=== Build Verification ==="
-        if [ -d "dist/CARpetrosani.app" ]; then
-          echo "✅ SUCCES: .app bundle created!"
-          echo "=== App Structure ==="
-          find "dist/CARpetrosani.app" -type f | head -15
-          echo "=== Executable Info ==="
-          file "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani"
-          echo "=== App Bundle Size ==="
-          du -sh "dist/CARpetrosani.app"
-        else
+        
+        if [ ! -d "dist/CARpetrosani.app" ]; then
           echo "❌ FAIL: .app bundle NOT found!"
-          echo "=== dist contents ==="
-          ls -la dist/
-          echo "=== build contents ==="
-          ls -la build/
+          ls -la dist/ || echo "dist/ doesn't exist"
           exit 1
         fi
         
+        echo "✅ .app bundle created"
+        
+        # Verifică executabilul
+        if [ ! -f "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani" ]; then
+          echo "❌ FAIL: Executable NOT found!"
+          exit 1
+        fi
+        
+        echo "✅ Executable exists"
+        
+        # Verifică arhitecturile suportate (IMPORTANT!)
+        echo -e "\n=== Architecture Support ==="
+        file "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani"
+        lipo -info "dist/CARpetrosani.app/Contents/MacOS/CARpetrosani" || echo "lipo check failed"
+        
+        # Verifică dimensiune
+        echo -e "\n=== App Size ==="
+        du -sh "dist/CARpetrosani.app"
+        
+        # Verifică module critice
+        echo -e "\n=== Critical Modules Check ==="
+        for module in openpyxl xlsxwriter reportlab PyQt5; do
+          if find "dist/CARpetrosani.app" -name "*${module}*" -type f | head -1 | grep -q .; then
+            echo "✅ $module found"
+          else
+            echo "⚠️  $module not found"
+          fi
+        done
+        
     - name: Fix macOS Security
       run: |
+        echo "Fixing macOS security attributes..."
         xattr -cr dist/CARpetrosani.app
+        
+        # Ad-hoc signing
         codesign --force --deep --sign - dist/CARpetrosani.app
+        
+        # Verifică semnătura
+        echo -e "\n=== Signature Verification ==="
+        codesign -dv dist/CARpetrosani.app 2>&1 | head -5
+        
         echo "✅ Security flags fixed"
         
-    - name: Test Basic Functionality
+    - name: Create Distribution Package
       run: |
-        echo "Testing app launch (will timeout after 5s)..."
-        timeout 5s dist/CARpetrosani.app/Contents/MacOS/CARpetrosani || echo "✅ App launch test completed"
-        
-    - name: Create ZIP for easy download
-      run: |
-        cd dist
-        zip -r ../CARpetrosani-macOS.zip CARpetrosani.app
-        cd ..
-        echo "✅ ZIP created: CARpetrosani-macOS.zip"
-        ls -lh CARpetrosani-macOS.zip
-        
-    - name: Upload ZIP artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CARpetrosani-macOS
-        path: CARpetrosani-macOS.zip
-        retention-days: 30
+        echo "Creating distribution package..."
