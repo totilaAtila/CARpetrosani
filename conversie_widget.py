@@ -176,7 +176,7 @@ class DatabaseSchemaValidator:
         },
         'ACTIVI': {
             'table': 'ACTIVI',
-            'required_columns': ['NR_FISA', 'DEP_SOLD', 'DIVIDEND', 'DIVIDEND']
+            'required_columns': ['NR_FISA', 'NUM_PREN', 'DEP_SOLD', 'DIVIDEND']
         },
         'INACTIVI': {
             'table': 'inactivi',  # Notă: numele tabelei este cu literă mică
