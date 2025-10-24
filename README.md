@@ -37,6 +37,173 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
 
 #### 2. **Operațiuni Financiare**
    - **Sume Lunare**: Introducere plăți lunare cu calculator utomatizat pentru dobândă integrat
+   - Rezumat amănunțit al modulului sume_lunare
+
+
+---
+
+1. Scop general
+
+Modulul sume_lunare gestionează toate operațiile lunare din aplicația CAR:
+
+vizualizarea și editarea tranzacțiilor din tabela DEPCRED
+
+recalcularea soldurilor lunare după modificări
+
+calculul dobânzii la stingerea împrumuturilor
+
+actualizarea cotizației standard
+
+propagarea modificărilor în lunile ulterioare.
+
+
+Totul rulează în interfață PyQt5, cu fire separate pentru recalculare.
+
+
+---
+
+2. Structură logică
+
+a. Clase și funcții principale
+
+SumeLunareWidget — componenta principală a UI-ului lunar.
+
+Gestionează fișele membrilor, modificările, recalculările, butoanele de comandă și etichetele de stare.
+
+Apelează funcțiile interne _handle_aplica_dobanda, _declanseaza_recalculare_ulterioara, _on_recalculation_finished, _on_recalculation_error, _worker_recalculeaza_luni_ulterioare.
+
+
+TranzactieDialog — dialog modern pentru modificarea tranzacțiilor.
+
+Include validatori numerici, calcul estimativ al ratelor (prin număr de luni sau rată fixă).
+
+Poate fi deschis automat din logica de aplicare a dobânzii.
+
+
+get_config_path() / get_dobanda()
+
+Localizează și citește fișierul config_dobanda.json.
+
+Extrage valoarea loan_interest_rate_on_extinction (ex. 0.004 = 4‰).
+
+Dacă lipsește fișierul, folosește valoarea implicită.
+
+
+
+
+---
+
+3. Calculul soldurilor
+
+Soldurile curente se bazează pe:
+
+impr_sold_nou = impr_sold_vechi + impr_deb - impr_cred
+dep_sold_nou  = dep_sold_vechi + dep_deb - dep_cred
+
+Soldurile sunt ajustate la 0 dacă rezultatul este ≤ 0.005.
+
+Orice modificare manuală într-o lună declanșează recalcularea automată a lunilor ulterioare (prin _declanseaza_recalculare_ulterioara → _worker_recalculeaza_luni_ulterioare).
+
+Recalcularea iterează lună cu lună, preluând soldurile de deschidere din luna anterioară și rescrie valorile corecte în depcred.
+
+
+
+---
+
+4. Calculul dobânzii
+
+Dobânda este calculată în două contexte:
+
+1. La stingerea automată a împrumutului – în timpul generării lunii (sincronizat cu generare_luna.py).
+
+
+2. Manual, prin butonul “Aplică dobândă” – pentru achitare anticipată.
+
+
+
+Algoritm principal (_calculeaza_dobanda_la_zi)
+
+1. Se determină perioada ultimului împrumut activ:
+
+SELECT MAX(anul*100+luna)
+FROM depcred
+WHERE nr_fisa=? AND impr_deb>0 AND (anul*100+luna <= ?)
+
+
+2. Se caută perioada de început (ultima lună cu sold zero înainte de acel împrumut).
+
+
+3. Se adună toate soldurile lunare pozitive din perioada împrumutului:
+
+SELECT SUM(impr_sold)
+FROM depcred
+WHERE nr_fisa=? AND (anul*100+luna BETWEEN ? AND ?)
+AND impr_sold > 0
+
+
+4. Dobânda este:
+
+dobanda = SUM(impr_sold) * rata_dobanda
+
+apoi rotunjită la 2 zecimale.
+
+
+5. Dobânda se adaugă în dialogul de tranzacție, dar se salvează doar dacă utilizatorul confirmă.
+
+
+
+
+---
+
+5. Alte funcții relevante
+
+_actualizeaza_cotizatie_standard() – modifică COTIZATIE_STANDARD în tabela membrii.
+
+_on_recalculation_progress(), _on_recalculation_error() – actualizează UI în timp real.
+
+Validatori – asigură introducerea valorilor numerice corecte pentru toate câmpurile.
+
+
+
+---
+
+6. Fluxul general al operațiilor
+
+1. Utilizatorul selectează o fișă → se încarcă istoricul.
+
+
+2. Modifică o lună → soldurile se recalculează și propagate automat.
+
+
+3. Poate aplica manual dobânda → se deschide dialogul precompletat.
+
+
+4. Se salvează tranzacția → se actualizează baza DEPCRED.
+
+
+5. Recalcularea lunilor ulterioare pornește în fundal.
+
+
+6. Interfața se reactivează după finalizare.
+
+
+
+
+---
+
+7. Legătura cu generare_luna.py
+
+sume_lunare operează la nivel de membru (individual), în timp ce generare_luna procesează toți membrii simultan.
+
+Ambele folosesc aceleași formule pentru calculul soldurilor și dobânzii.
+
+sume_lunare permite intervenții manuale și recalculări selective.
+
+
+
+---
+
+
    - **Împrumuturi Noi**: Instrument adiacent strict pentru Sume lunare. Permite vizualizarea, marcarea și copierea numelor membrilor la care trebuie stabilită Prima rată și lipirea numelui respectiv în căsuța de căutare din Sume lunare. De asemenea afișează lista velor vare au primit împrumut în luna sursă, ajutând utilizatorul să consemneze respectivul împrumut (Fereastră separată - F12)
    - **Dividende**: Calculare și distribuire dividende pentru membri activi
    - **Calculator**: Calculator integrat cu funcții avansate (Ctrl+Alt+C)
