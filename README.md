@@ -172,7 +172,10 @@ Plasați bazele de date SQLite în directorul principal al aplicației:
 - `activi.db` - Membri activi (pentru dividende)
 - `INACTIVI.db` - Membri inactivi
 - `CHITANTE.db` - Tracking numere chitanțe (creat automat dacă lipsește)
-- `CONVERSIE.db` - Configurații conversie valutară
+
+**Fișiere de Configurare:**
+- `dual_currency.json` - Status conversie și configurare sistem dual currency
+- `config_dobanda.json` - Configurare rată dobândă
 
 **După Conversie EUR (generate automat):**
 - `MEMBRIIEUR.db` - Informații membri (cu cotizații EUR)
@@ -198,6 +201,7 @@ CARpetrosani/
 ├── dialog_styles.py                 # Stiluri pentru dialoguri
 ├── car_settings.json                # Setări persistente (tema selectată)
 ├── dual_currency.json               # Status conversie și configurare dual currency
+├── config_dobanda.json              # Configurare rată dobândă (creat la prima utilizare)
 │
 ├── ui/                              # Module interfață utilizator
 │   ├── statistici.py                # Dashboard statistici
@@ -263,8 +267,7 @@ Coloane:
 - DOMICILIUL       TEXT                   -- Adresă domiciliu
 - CALITATEA        TEXT                   -- Funcție/Departament
 - DATA_INSCR       TEXT                   -- Data înscrierii (YYYY-MM-DD)
-- COTIZATIE_STANDARD REAL                 -- Cotizație lunară standard (RON)
-- COTIZATIE_EUR    REAL                   -- Cotizație lunară EUR (după conversie)
+- COTIZATIE_STANDARD REAL                 -- Cotizație lunară standard (RON sau EUR după conversie)
 ```
 
 #### 2. DEPCRED.db - Depuneri și Credite
@@ -325,14 +328,15 @@ Coloane:
 ### Diferențe RON vs EUR
 
 **Baze RON** (MEMBRII.db, DEPCRED.db, etc.):
-- Coloană `COTIZATIE_STANDARD` în RON
+- Câmp `COTIZATIE_STANDARD` cu valori în RON
 - Toate sumele în RON
 - Fără coloană `CONVERTIT_DIN_RON`
 
 **Baze EUR** (MEMBRIIEUR.db, DEPCREDEUR.db, etc.):
-- Coloană `COTIZATIE_EUR` în EUR
-- Toate sumele convertite la EUR
-- Coloană `CONVERTIT_DIN_RON = 1` pentru tracking
+- Câmp `COTIZATIE_STANDARD` cu valori convertite în EUR
+- Toate sumele convertite la EUR (aplicând cursul 4.9755)
+- Coloană `CONVERTIT_DIN_RON = 1` în DEPCRED pentru tracking
+- Structura identică, doar valorile sunt convertite
 
 ## 💰 Logică Financiară
 
@@ -506,6 +510,16 @@ Listări (Alt+L)
 }
 ```
 
+### Fișier config_dobanda.json
+
+```json
+{
+    "rata_dobanda": 0.004
+}
+```
+
+**Notă:** Rata dobândă = 0.004 înseamnă 4‰ (4 la mie). Acest fișier este creat automat la prima utilizare a modulelor de generare lună sau sume lunare.
+
 ## 🐛 Troubleshooting
 
 ### Problema: Aplicația nu pornește
@@ -613,14 +627,5 @@ dir DEPCRED.db MEMBRII.db
 - CHITANTE.db va fi actualizat cu noul număr
 
 ## 📖 FAQ (Întrebări Frecvente)
-
-**Î: Pot reveni de la EUR la RON după conversie?**
-**R:** Nu, conversia este definitivă. Sistemul păstrează bazele RON în modul read-only pentru referință istorică.
-
-**Î: Ce se întâmplă dacă șterg dual_currency.json?**
-**R:** Sistemul va considera conversia ca neaplicată și va permite din nou modul de scriere pentru RON.
-
-**Î: Pot folosi o altă rată de dobândă?**
-**R:** Da, rata se poate modifica în fișierele de configurare sau direct în cod (variabila `INTEREST_RATE_DEFAULT`).
 
 **
