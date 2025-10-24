@@ -59,7 +59,97 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
    - **Actualizare Automată**: CHITANTE.db actualizat cu numerele chitanțelor (STARTCH_PR, STARTCH_AC)
 
 #### 5. **Administrare Sistem**
-   - **Generare Lună Nouă**: Proces automatizat cu calcul dobânzi la achitarea împrumuturilor și actualizare solduri, automatizarea completării datelor financiare preluate din luna sursă 
+   - **Generare Lună Nouă**: Proces automatizat cu calcul dobânzi la achitarea împrumuturilor și actualizare solduri, automatizarea completării datelor financiare preluate din luna sursă
+   - Rezumat amănunțit generare_luna.py:
+
+Scop și context
+
+Modul GUI PyQt5 pentru “Generare Lună Nouă” în aplicația CAR. Generează înregistrările lunare în DEPCRED.db, pe baza stării din luna anterioară, aplică cotizații, moștenește rate, adaugă dividende în ianuarie și calculează dobânda la stingerea împrumutului. Folosește MEMBRII.db și LICHIDATI.db ca surse și scrie în DEPCRED.db. Verifică existența fișierelor și afișează erori dacă lipsesc.
+
+
+Baze de date și fișiere
+
+DB principale: MEMBRII.db, DEPCRED.db, LICHIDATI.db (+ opțional ACTIVI.db pentru dividende). La inițializare se avertizează dacă lipsesc.
+
+Config rată dobândă în config_dobanda.json (cheie loan_interest_rate_on_extinction). Citire și salvare cu fallback la valoare implicită.
+
+
+Interfața (UI)
+
+Widget principal cu etichete de perioadă curentă/următoare, selector de lună, butoane: generează, șterge ultima lună, modifică rata, export log, curăță log, listează lichidați/activi și numere nealocate; zonă de status. Stilizare prin stylesheet.
+
+
+Fluxul de generare a lunii
+
+1. Determină perioada sursă M-1 față de țintă; validează anul. Deschide conexiuni la DB. Preia setul de lichidați.
+
+
+2. Verifică schema MEMBRII.membrii pentru COTIZATIE_STANDARD. Selectează membrii activi (excludere lichidați). Resetează prima=0 pe luna sursă.
+
+
+3. Pentru fiecare membru:
+
+Citește impr_sold și dep_sold din luna sursă; dacă lipsesc, omite. Inițializează impr_deb_nou=0, dep_cred_nou=0.
+
+Moștenește rata plătită luna anterioară, doar dacă nu există împrumut nou în luna sursă. Valoarea este quantizată la 0,01; altfel 0,00.
+
+Setează dep_deb_nou = cotizație_standard. În ianuarie adaugă dividendul din ACTIVI.db (dacă există și valid).
+
+Plafonează impr_cred_nou la soldul sursă; dacă soldul sursă ≤ 0.005, rata devine 0.00.
+
+Calculează solduri noi:
+
+Împrumut: impr_sold_nou = max(0, impr_sold_sursa + impr_deb_nou - impr_cred_nou) cu prag de zeroizare 0.005.
+Depozit: dep_sold_nou = dep_sold_sursa + dep_deb_nou - dep_cred_nou.
+
+
+Dacă împrumutul se stinge acum (impr_sold_sursa > 0.005 și impr_sold_nou == 0), calculează dobânda de lichidare: caută perioada de început (MAX anul*100+luna cu impr_deb>0 ≤ luna sursă), însumează impr_sold pozitiv pe interval [start..sursă], apoi dobândă = SUM(impr_sold) × rată_lichidare, cu rotunjire la 0.01.
+
+Inserează în depcred rândul lunii țintă: câmpuri nr_fisa, luna, anul, dobanda, impr_deb, impr_cred, impr_sold, dep_deb, dep_cred, dep_sold, prima=1. Commit la final. Rezumat cu totaluri și număr dobânzi calculate.
+
+
+
+
+Gestionare perioadă curentă și selecție
+
+Detectează ultima lună procesată din DEPCRED.depcred și afișează următoarea lună logică; actualizează combobox. Verifică existența unei luni în DB.
+
+
+Ștergerea ultimei luni / unei luni țintă
+
+Ștergere sigură a ultimei luni generate cu confirmare. Operația internă: DELETE FROM depcred WHERE luna=? AND anul=?. Reactualizează perioada. Suport și pentru suprascriere: dacă luna țintă există, întreabă pentru ștergere + regenerare.
+
+
+Alte funcții utile
+
+Listă membri lichidați: citește LICHIDATI.lichidati, atașează numele din MEMBRII.membrii, afișează în log.
+
+Listă membri activi pe luna curentă: join DEPCRED + MEMBRII, raportează total depuneri/împrumuturi și statistici.
+
+Numere de fișă nealocate: calculează diferența dintre [1..max] și setul de NR_FISA din MEMBRII. Dialog dedicat.
+
+
+Configurarea și modificarea ratei
+
+Dialog pentru setarea ratei în ‰. Intern salvează ca fracție la mie în loan_interest_rate_on_extinction. Actualizează eticheta și persistă în config_dobanda.json. Validări și rotunjiri.
+
+
+Threading, progres, erori
+
+Rulează generarea în worker thread, raportează progres în UI, gestionează erorile cu rollback la blocări/exceptii și reînchide conexiunile. Mesaje clare în log și pop-ups.
+
+
+Reguli de calcul critice
+
+Prag zeroizare împrumut: 0.005.
+
+Moștenire rată doar dacă nu există impr_deb în luna sursă.
+
+Dividend doar în ianuarie, dacă ACTIVI.db prezent și valoare validă.
+
+Rotunjiri: sume la 0.01, rata la 0.000001, dobândă la 0.01.
+
+
    - **Optimizare Baze**: VACUUM și REINDEX pentru performanță optimă
    - **Salvări**: Operațiuni backup și restore pentru bazele de date
    - **CAR DBF Converter**: Import/export date din formate DBF (Ctrl+Alt+D)
