@@ -20,9 +20,9 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
 - **Statistici Conversie**: Raportare detaliată cu totaluri și diferențe de rotunjire
 
 ### 🎨 Interfață Modernă cu 21+ Teme Vizuale
-- **Teme Clasice Glass**: Verde Original, Albastru Ocean, Violet Elegant, Portocaliu Sunset, Roz Delicat, Turcoaz Marin
-- **Teme Profesionale**: Corporate Blue, Black Professional, Dark Gray, Charcoal, Slate, Executive Gray, Sage, Warm Beige, Deep Navy, Soft Lavender, Cool Mint, Warm Taupe, Steel Blue, Soft Cream
-- **Teme Optimizate**: Text Negru pe Off-White, Text Gri Închis, Text Negru pe Gri, Text Gri pe Fundal Crem, Schema Gri Monochromă
+- **Teme Clasice Glass**
+- **Teme Profesionale**
+- **Teme Optimizate**
 - **Persistență**: Tema selectată este salvată automat în `car_settings.json`
 - **Preview Real-Time**: Vizualizare instantanee a temelor înainte de aplicare
 - **Efecte Moderne**: Gradient glass, shadow effects, animații fluide
@@ -36,8 +36,8 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
    - **Verificare Fișe**: Validare consistență date membri
 
 #### 2. **Operațiuni Financiare**
-   - **Sume Lunare**: Introducere plăți lunare cu calculator dobândă integrat
-   - **Împrumuturi Noi**: Gestionare împrumuturi cu calcul rate și dobândă (Fereastră separată - F12)
+   - **Sume Lunare**: Introducere plăți lunare cu calculator utomatizat pentru dobândă integrat
+   - **Împrumuturi Noi**: Instrument adiacent strict pentru Sume lunare. Permite vizualizarea, marcarea și copierea numelor membrilor la care trebuie stabilită Prima rată și lipirea numelui respectiv în căsuța de căutare din Sume lunare. De asemenea afișează lista velor vare au primit împrumut în luna sursă, ajutând utilizatorul să consemneze respectivul împrumut (Fereastră separată - F12)
    - **Dividende**: Calculare și distribuire dividende pentru membri activi
    - **Calculator**: Calculator integrat cu funcții avansate (Ctrl+Alt+C)
 
@@ -45,7 +45,7 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
    - **Situație Lunară**: Vizualizare detalii pentru o lună selectată
    - **Situație Trimestrială**: Raportare date pe trimestru
    - **Situație Anuală**: Sinteză anuală completă
-   - **Statistici**: Dashboard cu totaluri, medii și distribuții
+   - **Statistici**: Dashboard cu totaluri, situații financiare și de membrii chitanțe etc.
    - **Afișare Membri Inactivi**: Monitorizare membri cu lipsă activitate
 
 #### 4. **Listări și Chitanțe**
@@ -59,7 +59,7 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
    - **Actualizare Automată**: CHITANTE.db actualizat cu numerele chitanțelor (STARTCH_PR, STARTCH_AC)
 
 #### 5. **Administrare Sistem**
-   - **Generare Lună Nouă**: Proces automatizat cu calcul dobânzi și actualizare solduri
+   - **Generare Lună Nouă**: Proces automatizat cu calcul dobânzi la achitarea împrumuturilor și actualizare solduri, automatizarea completării datelor financiare preluate din luna sursă 
    - **Optimizare Baze**: VACUUM și REINDEX pentru performanță optimă
    - **Salvări**: Operațiuni backup și restore pentru bazele de date
    - **CAR DBF Converter**: Import/export date din formate DBF (Ctrl+Alt+D)
@@ -165,10 +165,8 @@ Plasați bazele de date SQLite în directorul principal al aplicației:
 
 **Baze de Date Obligatorii:**
 - `MEMBRII.db` - Informații despre membri
-- `DEPCRED.db` - Depuneri și credite RON
+- `DEPCRED.db` - Depuneri și credite
 - `LICHIDATI.db` - Membri lichidați
-
-**Baze de Date Opționale:**
 - `activi.db` - Membri activi (pentru dividende)
 - `INACTIVI.db` - Membri inactivi
 - `CHITANTE.db` - Tracking numere chitanțe (creat automat dacă lipsește)
@@ -178,11 +176,11 @@ Plasați bazele de date SQLite în directorul principal al aplicației:
 - `config_dobanda.json` - Configurare rată dobândă
 
 **După Conversie EUR (generate automat):**
-- `MEMBRIIEUR.db` - Informații membri (cu cotizații EUR)
-- `DEPCREDEUR.db` - Depuneri și credite EUR
-- `activiEUR.db` - Membri activi EUR
-- `LICHIDATIEUR.db` - Membri lichidați EUR
-- `INACTIVIEUR.db` - Membri inactivi EUR
+- `MEMBRIIEUR.db` 
+- `DEPCREDEUR.db`
+- `activiEUR.db`
+- `LICHIDATIEUR.db`
+- `INACTIVIEUR.db`
 - `dual_currency.json` - Status conversie și configurare
 
 ### 5. Rulare Aplicație
@@ -237,15 +235,15 @@ CARpetrosani/
 │   ├── app_icon.png
 │   ├── calc.png
 │   └── ...
-│
-├── MEMBRII.db                       # Baze de date SQLite (RON)
+│                       # Baze de date SQLite (RON)
+|─ MEMBRII.db
 ├── DEPCRED.db
 ├── activi.db
 ├── INACTIVI.db
 ├── LICHIDATI.db
 ├── CHITANTE.db                      # Tracking chitanțe (creat automat)
-│
-├── MEMBRIIEUR.db                    # Baze de date SQLite (EUR - după conversie)
+│                    # Baze de date SQLite (nume original + sufix EUR - după conversie)
+├── MEMBRIIEUR.db
 ├── DEPCREDEUR.db
 ├── activiEUR.db
 ├── INACTIVIEUR.db
@@ -259,7 +257,8 @@ CARpetrosani/
 
 ### Tabele Principale
 
-#### 1. MEMBRII.db - Informații Membri
+#### 1. MEMBRII.db - Tabela MEMBRII 
+Informații Membri
 ```sql
 Coloane:
 - NR_FISA          INTEGER PRIMARY KEY    -- Număr fișă unic
@@ -267,44 +266,45 @@ Coloane:
 - DOMICILIUL       TEXT                   -- Adresă domiciliu
 - CALITATEA        TEXT                   -- Funcție/Departament
 - DATA_INSCR       TEXT                   -- Data înscrierii (YYYY-MM-DD)
-- COTIZATIE_STANDARD REAL                 -- Cotizație lunară standard (RON sau EUR după conversie)
+- COTIZATIE_STANDARD REAL                 -- Cotizație lunară standard REAL
 ```
 
-#### 2. DEPCRED.db - Depuneri și Credite
+#### 2. DEPCRED.db - Tabela DEPCRED
+Depuneri și Credite
 ```sql
 Coloane:
 - NR_FISA          INTEGER                -- Referință către MEMBRII
-- LUNA             INTEGER                -- Luna (1-12)
-- ANUL             INTEGER                -- Anul
 - DOBANDA          REAL                   -- Dobândă calculată
 - IMPR_DEB         REAL                   -- Împrumut debit (nou împrumut)
 - IMPR_CRED        REAL                   -- Împrumut credit (plată)
-- IMPR_SOLD        REAL                   -- Sold împrumut
-- DEP_DEB          REAL                   -- Depunere debit (retragere)
-- DEP_CRED         REAL                   -- Depunere credit (depunere)
+- IMPR_SOLD        REAL                  -- Sold împrumut
+- LUNA             INTEGER                -- Luna (1-12)
+- ANUL             INTEGER                -- Anul
+- DEP_DEB          REAL                   -- Cotizația, se consideră debit lunar,se adaugă la DEP_SOLD
+- DEP_CRED         REAL                   - Retragere din fondul social
 - DEP_SOLD         REAL                   -- Sold depunere
-- PRIMA            REAL                   -- Primă/Bonus
-- CONVERTIT_DIN_RON INTEGER              -- Flag conversie (1=convertit, doar în EUR)
+- PRIMA            LOGIC                   -- Prima este un câmp boolean, marchează luna activă 1= luna activă. Generare lună folosește acest câmp: când se generează luna țintă - devine 1, uar luna sursă - devine 0
 ```
 
-#### 3. activi.db - Membri Activi (Dividende)
+#### 3. activi.db - Tabela ACTIVI
 ```sql
 Coloane:
 - NR_FISA          INTEGER PRIMARY KEY    -- Număr fișă
 - NUM_PREN         TEXT                   -- Nume și prenume
 - DEP_SOLD         REAL                   -- Sold depuneri
 - DIVIDEND         REAL                   -- Dividend calculat
-- BENEFICIU        REAL                   -- Beneficiu total
 ```
 
-#### 4. LICHIDATI.db - Membri Lichidați
+#### 4. LICHIDATI.db - Tabela lichidati
+Membri Lichidați
 ```sql
 Coloane:
 - nr_fisa          INTEGER PRIMARY KEY    -- Număr fișă
 - data_lichidare   TEXT                   -- Data lichidării
 ```
 
-#### 5. INACTIVI.db - Membri Inactivi
+#### 5. INACTIVI.db - Tabela inactivi
+Membri Inactivi
 ```sql
 Coloane:
 - nr_fisa          INTEGER PRIMARY KEY    -- Număr fișă
@@ -312,7 +312,7 @@ Coloane:
 - lipsa_luni       INTEGER                -- Număr luni lipsă consecutive
 ```
 
-#### 6. CHITANTE.db - Tracking Chitanțe
+#### 6. CHITANTE.db - Tabela CHITANTE Tracking Chitanțe
 ```sql
 Coloane:
 - STARTCH_PR       INTEGER                -- Număr chitanță precedent (ultima sesiune)
@@ -328,45 +328,118 @@ Coloane:
 ### Diferențe RON vs EUR
 
 **Baze RON** (MEMBRII.db, DEPCRED.db, etc.):
-- Câmp `COTIZATIE_STANDARD` cu valori în RON
-- Toate sumele în RON
-- Fără coloană `CONVERTIT_DIN_RON`
+- Câmp `COTIZATIE_STANDARD` cu 
 
 **Baze EUR** (MEMBRIIEUR.db, DEPCREDEUR.db, etc.):
-- Câmp `COTIZATIE_STANDARD` cu valori convertite în EUR
-- Toate sumele convertite la EUR (aplicând cursul 4.9755)
-- Coloană `CONVERTIT_DIN_RON = 1` în DEPCRED pentru tracking
-- Structura identică, doar valorile sunt convertite
+
+- Structura Identică!, doar valorile sunt convertite la momentul folosirii conversie_widget
 
 ## 💰 Logică Financiară
 
 ### Calcul Dobândă
 
-Dobânda se calculează lunar pe baza soldului împrumutului:
+Dobânda se calculează DOAR la achitarea Rezumat calculuri în generare_luna.py:
 
-```python
-Dobândă = Sold Împrumut × Rată Dobândă
 
-Rată Dobândă Implicită: 0.004 (4‰ - patru la mie)
-```
+---
 
-**Exemplu:**
-```
-Sold Împrumut: 10,000 RON
-Rată: 0.004
-Dobândă Lunară = 10,000 × 0.004 = 40 RON
-```
+1. Calcul solduri
 
-### Actualizare Solduri
+a) Împrumut (impr_sold)
 
-**Pentru Împrumuturi:**
-```python
-Sold Nou = Sold Anterior + Împrumut Nou (Deb) - Plată (Cred) + Dobândă
-```
+impr_sold_nou_calculat = impr_sold_sursa + impr_deb_nou - impr_cred_nou
+if impr_sold_nou_calculat <= Decimal('0.005'):
+    impr_sold_nou = Decimal("0.00")
+else:
+    impr_sold_nou = impr_sold_nou_calculat
 
-**Pentru Depuneri:**
-```python
-Sold Nou = Sold Anterior - Retragere (Deb) + Depunere (Cred)
+Interpretare:
+
+impr_sold_sursa = soldul anterior al împrumutului.
+
+impr_deb_nou = debit nou (împrumut acordat în luna curentă).
+
+impr_cred_nou = credit nou (rată plătită luna aceasta).
+
+Rezultatul final este zeroizat dacă diferența este sub 0.005 RON (rotunjire).
+
+
+
+---
+
+b) Depozit (dep_sold)
+
+dep_sold_nou = dep_sold_sursa + dep_deb_nou - dep_cred_nou
+
+Interpretare:
+
+dep_sold_sursa = sold anterior al depozitului.
+
+dep_deb_nou = sumă nou depusă (de obicei cotizația standard + eventual dividend în ianuarie).
+
+dep_cred_nou = sume retrase din depozit.
+
+
+
+---
+
+2. Calcul dobândă la stingere împrumut
+
+Dobânda se calculează doar dacă:
+
+if impr_sold_sursa > Decimal('0.005') and impr_sold_nou == Decimal("0.00"):
+
+adică membrul avea împrumut activ și acum l-a stins complet.
+
+Etape:
+
+1. Se caută prima lună de început a împrumutului:
+
+SELECT MAX(anul*100+luna)
+FROM depcred
+WHERE nr_fisa=? AND impr_deb>0 AND (anul*100+luna <= ?)
+
+
+2. Se calculează suma tuturor soldurilor de împrumut din perioada activă:
+
+SELECT SUM(impr_sold)
+FROM depcred
+WHERE nr_fisa=? AND (anul*100+luna BETWEEN ? AND ?) AND impr_sold > 0
+
+
+3. Dobânda este:
+
+dobanda_noua = (sum_balances * self.loan_interest_rate_on_extinction).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+loan_interest_rate_on_extinction este rata configurabilă (‰ – la mie).
+
+Se înmulțește cu suma totală a soldurilor din perioada împrumutului și se rotunjește la 0.01.
+
+
+
+
+
+---
+
+3. Rata dobânzii (configurare)
+
+Se salvează/încarcă din fișierul config_dobanda.json.
+
+Poate fi modificată prin UI:
+
+self.loan_interest_rate_on_extinction = Decimal(str(new_permille)) / 1000
+
+
+
+---
+
+Sinteză practică
+
+Tip sold	Formula	Observații
+
+Împrumut nou	impr_sold_nou = impr_sold_sursa + impr_deb_nou - impr_cred_nou	Dacă < 0.005 ⇒ 0
+Depozit nou	dep_sold_nou = dep_sold_sursa + dep_deb_nou - dep_cred_nou	În ianuarie: dep_deb_nou += dividend
+Dobândă lichidare	dobanda = SUM(impr_sold) × rata_lichidare	doar la stingerea totala
 ```
 
 ### Conversie RON → EUR
@@ -377,7 +450,7 @@ Aplicația implementează conversia conform **Regulamentului CE 1103/97**:
 - **Conversie Directă Individuală**: Fiecare înregistrare convertită separat
 - **Precizie Decimal**: Utilizare aritmetică precisă pentru evitarea erorilor de rotunjire
 - **Metodă de Rotunjire**: ROUND_HALF_UP (0.5 rotunjit la 1)
-- **Curs Fix**: 4.9755 RON/EUR (configurabil)
+- **Curs Fix**: 4.9755 RON/EUR implicit (configurabil)
 
 **Exemplu Conversie:**
 ```python
@@ -594,10 +667,10 @@ FROM DEPCRED
 WHERE IMPR_SOLD IS NULL OR DEP_SOLD IS NULL;
 ```
 
-### Problema: Chitanțele PDF nu se generează
+### Problema: Chitanțele PDF nu se generează, sau caracterele nu au diacritice 
 
 **Cauze Posibile:**
-- Fonturile lipsesc (Arial.ttf, DejaVuSans-Bold.ttf)
+- Fonturile lipsesc (Arial.ttf, DejaVuSans-Bold.ttf) . Ele trebuie să fie atât in dosarul Fonturi cât si în rădăcina aplicației 
 - Permisiuni insuficiente pentru scriere
 - DEPCRED.db sau MEMBRII.db lipsesc
 
