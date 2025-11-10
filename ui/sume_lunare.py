@@ -7,7 +7,7 @@ import logging
 import traceback
 from datetime import datetime
 import decimal
-from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
+from decimal import Decimal, ROUND_HALF_UP, ROUND_UP, InvalidOperation
 import json
 
 # Importuri PyQt5 - Grupate
@@ -433,21 +433,21 @@ class TranzactieDialog(QDialog):
         self.luna_an_input.setText(f"{luna:02d}-{anul}")
         # Păstrăm luna/anul read-only conform logicii existente
         self.luna_an_input.setReadOnly(True)
-        # Folosim .get cu default Decimal pentru siguranță
+        # Folosim .get cu default Decimal pentru siguranță (protecție None)
         self.dobanda_input.setText(
-            f"{data_existenta.get('dobanda', Decimal('0.00')):.2f}"
+            f"{(data_existenta.get('dobanda') or Decimal('0.00')):.2f}"
         )
         self.impr_deb_input.setText(
-            f"{data_existenta.get('impr_deb', Decimal('0.00')):.2f}"
+            f"{(data_existenta.get('impr_deb') or Decimal('0.00')):.2f}"
         )
         self.impr_cred_input.setText(
-            f"{data_existenta.get('impr_cred', Decimal('0.00')):.2f}"
+            f"{(data_existenta.get('impr_cred') or Decimal('0.00')):.2f}"
         )
         self.dep_deb_input.setText(
-            f"{data_existenta.get('dep_deb', Decimal('0.00')):.2f}"
+            f"{(data_existenta.get('dep_deb') or Decimal('0.00')):.2f}"
         )
         self.dep_cred_input.setText(
-            f"{data_existenta.get('dep_cred', Decimal('0.00')):.2f}"
+            f"{(data_existenta.get('dep_cred') or Decimal('0.00')):.2f}"
         )
         self.impr_deb_input.setFocus()
 
@@ -600,7 +600,7 @@ class TranzactieDialog(QDialog):
         # UPDATE pentru tabela depcred
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor = conn.cursor()
 
             # Actualizăm toate câmpurile relevante
@@ -1328,7 +1328,7 @@ class SumeLunareWidget(QWidget):
         conn = None
         try:
             # Folosim path-ul complet al DB_MEMBRII definit mai sus în modul
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cursor = conn.cursor()
 
             # Actualizăm cotizație standard în tabela membrii
@@ -1381,7 +1381,7 @@ class SumeLunareWidget(QWidget):
         needs_recalc = False
         last_period_val = 0
         try:
-            conn_check = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True)
+            conn_check = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True, timeout=30.0)
             cursor_check = conn_check.cursor()
             # Găsim ultima lună înregistrată pentru acest membru
             cursor_check.execute("SELECT MAX(anul*100+luna) FROM depcred WHERE nr_fisa = ?", (nr_fisa,))
@@ -1475,7 +1475,7 @@ class SumeLunareWidget(QWidget):
             # Folosește calea furnizată sau fallback la DB_DEPCRED
             db_path = db_depcred_path if db_depcred_path else DB_DEPCRED
             db_path_abs = os.path.abspath(db_path)
-            conn = sqlite3.connect(db_path_abs)
+            conn = sqlite3.connect(db_path_abs, timeout=30.0)
             cursor = conn.cursor()
             report_progress("✅ Conexiune DB deschisă.")
 
@@ -1785,7 +1785,7 @@ class SumeLunareWidget(QWidget):
         conn = None
 
         try:
-            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
             end_period_val = end_anul * 100 + end_luna
             start_period_val = 0
@@ -1905,7 +1905,7 @@ class SumeLunareWidget(QWidget):
         membri_list = []
         conn = None
         try:
-            conn = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute("SELECT NR_FISA, NUM_PREN FROM membrii ORDER BY NUM_PREN")
             self.lista_completa_membri = {}
@@ -2214,7 +2214,7 @@ class SumeLunareWidget(QWidget):
 
         conn = None
         try:
-            conn = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT NUM_PREN FROM membrii WHERE NR_FISA = ?", (nr_fisa,)
@@ -2237,7 +2237,7 @@ class SumeLunareWidget(QWidget):
         member_data_result = None
 
         try:
-            conn = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True, timeout=30.0)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute(
@@ -2263,7 +2263,7 @@ class SumeLunareWidget(QWidget):
 
         conn = None
         try:
-            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT dobanda, impr_deb, impr_cred, impr_sold, luna, anul, "
@@ -2290,7 +2290,7 @@ class SumeLunareWidget(QWidget):
 
         conn = None
         try:
-            conn = sqlite3.connect(f"file:{DB_LICHIDATI}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_LICHIDATI}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
 
             cursor.execute(
@@ -2377,7 +2377,7 @@ class SumeLunareWidget(QWidget):
                     # Verificăm direct în baza de date dacă a existat împrumut în luna anterioară
                     conn = None
                     try:
-                        conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True)
+                        conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True, timeout=30.0)
                         cursor = conn.cursor()
                         cursor.execute(
                             "SELECT impr_deb FROM depcred WHERE nr_fisa = ? AND luna = ? AND anul = ?",
@@ -2540,7 +2540,7 @@ class SumeLunareWidget(QWidget):
         conn = None
         record_data = None
         try:
-            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True, timeout=30.0)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(
@@ -2573,7 +2573,7 @@ class SumeLunareWidget(QWidget):
         conn = None
         opening_impr, opening_dep = Decimal('0.00'), Decimal('0.00')
         try:
-            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT impr_sold, dep_sold FROM depcred WHERE nr_fisa = ? AND luna = ? AND anul = ?",
@@ -2657,7 +2657,7 @@ class SumeLunareWidget(QWidget):
         # UPDATE pentru tabela depcred
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor = conn.cursor()
 
             # Actualizăm toate câmpurile relevante
@@ -2701,7 +2701,7 @@ if __name__ == "__main__":
         """ Funcție helper pentru inițializare DB. """
         conn = None
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(create_sql)
             conn.commit()
