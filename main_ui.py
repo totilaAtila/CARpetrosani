@@ -1036,13 +1036,14 @@ class CARApp(QMainWindow):
         import sys
         from pathlib import Path
 
-        # Maparea bazelor RON -> EUR
+        # Maparea bazelor RON -> EUR (DOAR cele procesate de conversie_widget.py)
         db_mapping = {
             "MEMBRII.db": "MEMBRIIEUR.db",
             "DEPCRED.db": "DEPCREDEUR.db",
             "activi.db": "activiEUR.db",
             "INACTIVI.db": "INACTIVIEUR.db",
             "LICHIDATI.db": "LICHIDATIEUR.db"
+            # NOTĂ: CHITANTE.db nu se convertește - este doar pentru tipărire
         }
 
         base_path = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent

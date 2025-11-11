@@ -2,6 +2,8 @@
 from PyQt5.QtCore import Qt
 import sys
 import os
+import builtins  # Import corect pentru monkey patching
+
 # === ADAUGĂ ACEST COD ÎNAINTE DE ORICE ALTCEVA ===
 if sys.platform == "darwin":
     os.environ["QT_MAC_WANTS_LAYER"] = "1"
@@ -17,13 +19,14 @@ def setup_early_database_patching():
 
     currency_logic = CurrencyLogic()
 
-    # Maparea bazelor RON -> EUR
+    # Maparea bazelor RON -> EUR (DOAR cele procesate de conversie_widget.py)
     db_mapping = {
         "MEMBRII.db": "MEMBRIIEUR.db",
         "DEPCRED.db": "DEPCREDEUR.db",
         "activi.db": "activiEUR.db",
         "INACTIVI.db": "INACTIVIEUR.db",
         "LICHIDATI.db": "LICHIDATIEUR.db"
+        # NOTĂ: CHITANTE.db nu se convertește - este doar pentru tipărire
     }
 
     def patch_module_database_paths(module):
@@ -31,8 +34,8 @@ def setup_early_database_patching():
         base_path = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
 
         for attr_name in dir(module):
-            if attr_name.startswith('DB_') and attr_name.endswith(
-                    ('MEMBRII', 'DEPCRED', 'ACTIVI', 'INACTIVI', 'LICHIDATI')):
+            # Unificat: verificăm toate atributele DB_* pentru consistență cu main_ui.py
+            if attr_name.startswith('DB_'):
                 current_value = getattr(module, attr_name)
 
                 # Verifică dacă trebuie să folosească EUR
@@ -53,7 +56,8 @@ def setup_early_database_patching():
                             break
 
     # Hook pentru interceptarea import-urilor
-    original_import = __builtins__.__import__
+    # CORECTAT: folosim 'builtins' în loc de '__builtins__' pentru consistență Python 3
+    original_import = builtins.__import__
 
     def patched_import(name, globals=None, locals=None, fromlist=(), level=0):
         module = original_import(name, globals, locals, fromlist, level)
@@ -64,7 +68,7 @@ def setup_early_database_patching():
 
         return module
 
-    __builtins__.__import__ = patched_import
+    builtins.__import__ = patched_import
     return patched_import, original_import
 
 
@@ -98,7 +102,7 @@ def main():
 
     finally:
         # Restore original import
-        __builtins__.__import__ = original_import
+        builtins.__import__ = original_import
 
 
 if __name__ == "__main__":
