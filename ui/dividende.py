@@ -27,13 +27,13 @@ DB_ACTIVI = os.path.join(BASE_RESOURCE_PATH, "ACTIVI.db")
 
 
 class DividendeWidget(QWidget):
-    """Widget pentru calculul și alocarea dividendelor/beneficiului anual."""
+    """Widget pentru calculul și alocarea dividendelor anuale."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.an_selectat = datetime.now().year
-        # Am redenumit membrii_eligibili pentru a stoca direct datele calculate
-        self.membri_cu_beneficiu = []
+        # Lista cu membrii și dividendele calculate
+        self.membri_cu_dividend = []
 
         self._init_db()
         self._init_ui()
@@ -48,24 +48,20 @@ class DividendeWidget(QWidget):
             try:
                 conn = sqlite3.connect(DB_ACTIVI)
                 cursor = conn.cursor()
-                # Am pastrat numele coloanei DIVIDEND pentru compatibilitate cu restul codului
+                # Schema oficială ACTIVI conform conversie_widget
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS ACTIVI (
                         NR_FISA INTEGER PRIMARY KEY,
                         NUM_PREN TEXT,
-                        DEP_SOLD REAL, -- Soldul din Decembrie, inca util pentru afisare/verificare eligibilitate
-                        BENEFICIU REAL DEFAULT 0.0 -- Am adaugat o coloana noua pentru Beneficiul calculat cu noua formula
+                        DEP_SOLD REAL, -- Soldul din Decembrie
+                        DIVIDEND REAL DEFAULT 0.0 -- Câmpul oficial pentru dividende
                     )
                 """)
-                # Verificam si adaugam coloana BENEFICIU daca nu exista
+                # Verificăm și adăugăm coloana DIVIDEND dacă nu există
                 cursor.execute("PRAGMA table_info(ACTIVI)")
                 columns = [col[1] for col in cursor.fetchall()]
-                if 'BENEFICIU' not in columns:
-                    cursor.execute("ALTER TABLE ACTIVI ADD COLUMN BENEFICIU REAL DEFAULT 0.0")
-                # Putem pastra si coloana DIVIDEND (calculata cu vechea formula) sau o putem elimina/ignora.
-                # Pentru moment, o pastram, dar calculul principal va folosi BENEFICIU.
-                # Daca vrem sa scapam de ea, ar trebui ALTER TABLE DROP COLUMN DIVIDEND, dar e mai complex.
-                # Momentan, ne concentram pe adaugarea si utilizarea coloanei BENEFICIU.
+                if 'DIVIDEND' not in columns:
+                    cursor.execute("ALTER TABLE ACTIVI ADD COLUMN DIVIDEND REAL DEFAULT 0.0")
 
                 conn.commit()
             except sqlite3.Error as e:
@@ -95,7 +91,7 @@ class DividendeWidget(QWidget):
 
         # Selector An
         an_layout = QHBoxLayout()
-        an_layout.addWidget(QLabel("Selectați anul pentru calculul beneficiului:"))
+        an_layout.addWidget(QLabel("Selectați anul pentru calculul dividendelor:"))
         self.combo_an = QComboBox()
         self.combo_an.setMinimumWidth(80)
         an_layout.addWidget(self.combo_an)
@@ -127,8 +123,8 @@ class DividendeWidget(QWidget):
         # Butoane
         buttons_layout = QHBoxLayout()
         self.btn_clear_activi = QPushButton("Șterge Date Calcul Anterioare")  # Am schimbat textul sa fie mai clar
-        self.btn_populeaza_calculeaza = QPushButton("Calculează Beneficiu")  # Am schimbat textul
-        self.btn_transfera_beneficiu = QPushButton("Transferă Beneficiu în Sold")  # Am schimbat textul
+        self.btn_populeaza_calculeaza = QPushButton("Calculează Dividende")
+        self.btn_transfera_dividend= QPushButton("Transferă Dividende în Sold")
         self.btn_transfera_beneficiu.setEnabled(False)
         self.btn_export_excel = QPushButton("Exportă Calcul în Excel")  # Am schimbat textul
         self.btn_export_excel.setEnabled(False)
@@ -247,7 +243,7 @@ class DividendeWidget(QWidget):
         try:
             self.an_selectat = int(self.combo_an.currentText())
             self.tabel_dividende.setRowCount(0)
-            self.membri_cu_beneficiu = []  # Am schimbat numele listei interne
+            self.membri_cu_dividend = []  # Am schimbat numele listei interne
             self.edit_profit.clear()  # Acum golim doar inputul de Profit
             # self.edit_cheltuieli.clear() # Eliminat
             self.btn_transfera_beneficiu.setEnabled(False)  # Am schimbat numele butonului
@@ -274,7 +270,7 @@ class DividendeWidget(QWidget):
                 cursor.execute("DELETE FROM ACTIVI")
                 conn.commit()
                 self.tabel_dividende.setRowCount(0)
-                self.membri_cu_beneficiu = []  # Am schimbat numele listei interne
+                self.membri_cu_dividend = []  # Am schimbat numele listei interne
                 self.btn_transfera_beneficiu.setEnabled(False)  # Am schimbat numele butonului
                 self.btn_export_excel.setEnabled(False)
                 QMessageBox.information(self, "Succes", "Datele calculate anterior au fost golite.")
@@ -288,7 +284,7 @@ class DividendeWidget(QWidget):
     def _populeaza_activi_calculeaza(self):
         """
         Identifică membri cu solduri lunare pozitive în anul selectat,
-        calculează beneficiul conform formulei B=(P/Stotal)*Smembru
+        calculează dividendul conform formulei B=(P/Stotal)*Smembru
         și populează baza de date ACTIVI și tabelul UI.
         """
         if self.an_selectat is None:
@@ -336,7 +332,7 @@ class DividendeWidget(QWidget):
             cursor_depcred.execute("SELECT COUNT(*) FROM DEPCRED WHERE ANUL = ? AND LUNA = 1", (an_viitor,))
             if cursor_depcred.fetchone()[0] == 0:
                 QMessageBox.warning(self, "Lipsă Date",
-                                    f"Luna Ianuarie {an_viitor} nu există! Generați-o mai întâi pentru a putea transfera beneficiul.")
+                                    f"Luna Ianuarie {an_viitor} nu există! Generați-o mai întâi pentru a putea transfera dividendul.")
                 # Continuam cu calculul si afisarea, dar butonul de transfer va ramane dezactivat (controlat la final)
                 # return # Nu mai returnam aici, doar avertizam
 
@@ -393,12 +389,12 @@ class DividendeWidget(QWidget):
                     "num_pren": num_pren,
                     "dep_sold_dec": sold_decembrie_dec,  # Soldul din Decembrie (Decimal)
                     "suma_solduri_lunare": suma_solduri_dec,
-                    "beneficiu": Decimal('0.0')  # Initializam beneficiul, va fi calculat mai jos
+                    "dividend": Decimal('0.0')  # Initializam dividendul, va fi calculat mai jos
                 })
 
             if S_total <= 0:
                 QMessageBox.information(self, "Informație",
-                                        "Suma totală a soldurilor lunare cumulate (S total) este 0 sau negativă. Nu se poate calcula beneficiul.")
+                                        "Suma totală a soldurilor lunare cumulate (S total) este 0 sau negativă. Nu se poate calcula dividendul.")
                 return  # Nu se poate calcula daca S_total e 0 sau negativ
 
             # --- Pasul 3: Calculează Beneficiul (B) pentru fiecare membru ---
@@ -410,7 +406,7 @@ class DividendeWidget(QWidget):
 
             # Goleste tabelul si lista interna
             self.tabel_dividende.setRowCount(0)
-            self.membri_cu_beneficiu = []  # Resetam lista interna
+            self.membri_cu_dividend = []  # Resetam lista interna
 
             # Calculăm și populăm
             r = 0  # r count pentru randurile din tabel
@@ -422,19 +418,19 @@ class DividendeWidget(QWidget):
 
                 # Aplicarea formulei: B = (P / S_total) * S_membru
                 # Ne asiguram ca folosim Decimal pentru calcule precise
-                beneficiu_B = (profit_P / S_total * S_membru).quantize(Decimal('0.01'),
+                dividend_B = (profit_P / S_total * S_membru).quantize(Decimal('0.01'),
                                                                        ROUND_HALF_UP)  # Rotunjim la 2 zecimale
 
-                # Actualizam beneficiul in lista interna
-                membru_data["beneficiu"] = beneficiu_B
-                self.membri_cu_beneficiu.append(membru_data)  # Adaugam in lista finala folosita pentru export/transfer
+                # Actualizam dividendul in lista interna
+                membru_data["dividend"] = dividend_B
+                self.membri_cu_dividend.append(membru_data)  # Adaugam in lista finala folosita pentru export/transfer
 
                 # Insereaza în baza de date ACTIVI
                 cursor_activi.execute("""
-                     INSERT INTO ACTIVI (NR_FISA, NUM_PREN, DEP_SOLD, BENEFICIU)
+                     INSERT INTO ACTIVI (NR_FISA, NUM_PREN, DEP_SOLD, DIVIDEND)
                      VALUES (?, ?, ?, ?)
                  """, (
-                nr_fisa, num_pren, float(dep_sold_dec_dec), float(beneficiu_B)))  # Convertim Decimal inapoi la float
+                nr_fisa, num_pren, float(dep_sold_dec_dec), float(dividend_B)))  # Convertim Decimal inapoi la float
 
                 # Adauga rand in tabelul UI
                 self.tabel_dividende.insertRow(r)
@@ -442,19 +438,19 @@ class DividendeWidget(QWidget):
                 item_nume = QTableWidgetItem(num_pren)
                 item_sold_dec = QTableWidgetItem(f"{dep_sold_dec_dec:.2f}")  # Afisam soldul din Dec.
                 item_suma_solduri = QTableWidgetItem(f"{S_membru:.2f}")  # Afisam suma soldurilor lunare
-                item_beneficiu = QTableWidgetItem(f"{beneficiu_B:.2f}")  # Afisam beneficiul calculat
+                item_dividend = QTableWidgetItem(f"{dividend_B:.2f}")  # Afisam dividendul calculat
 
                 # Setam alinierea pentru coloanele numerice la dreapta
                 item_fisa.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 item_sold_dec.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 item_suma_solduri.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                item_beneficiu.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                item_dividend.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
                 self.tabel_dividende.setItem(r, 0, item_fisa)
                 self.tabel_dividende.setItem(r, 1, item_nume)
                 self.tabel_dividende.setItem(r, 2, item_sold_dec)
                 self.tabel_dividende.setItem(r, 3, item_suma_solduri)
-                self.tabel_dividende.setItem(r, 4, item_beneficiu)
+                self.tabel_dividende.setItem(r, 4, item_dividend)
 
                 # Aplica stilul de culoare alternativ pe randuri
                 bg_color = QColor("#e8f4ff") if (r % 2 == 0) else QColor("#fff5e6")
@@ -468,8 +464,8 @@ class DividendeWidget(QWidget):
 
             conn_activi.commit()  # Commit inserarile in ACTIVI.db
 
-            # Activam butoanele de transfer si export DOAR daca sunt membri cu beneficiu
-            if self.membri_cu_beneficiu:
+            # Activam butoanele de transfer si export DOAR daca sunt membri cu dividend
+            if self.membri_cu_dividend:
                 # Verificam din nou daca exista Ianuarie anul urmator inainte de a activa butonul de transfer
                 cursor_depcred.execute("SELECT COUNT(*) FROM DEPCRED WHERE ANUL = ? AND LUNA = 1", (an_viitor,))
                 if cursor_depcred.fetchone()[0] > 0:
@@ -483,7 +479,7 @@ class DividendeWidget(QWidget):
 
             QMessageBox.information(
                 self, "Calcul Complet",
-                f"S-au identificat {len(self.membri_cu_beneficiu)} membri cu solduri lunare cumulate pozitive.\n"
+                f"S-au identificat {len(self.membri_cu_dividend)} membri cu solduri lunare cumulate pozitive.\n"
                 f"Suma totală a soldurilor lunare (S total): {S_total:.2f} lei.\n"
                 f"Beneficiul a fost calculat, afișat în tabel și salvat temporar în '{DB_ACTIVI}'."
             )
@@ -517,17 +513,17 @@ class DividendeWidget(QWidget):
             btn.setText(original_text)
             QApplication.processEvents()
 
-    # --- Metoda de transfer actualizată (va transfera BENEFICIUL) ---
+    # --- Metoda de transfer actualizată (va transfera DIVIDENDUL) ---
     def _transfera_beneficiu(self):
-        """Actualizează înregistrările din DEPCRED.db cu beneficiul calculat."""
-        if not self.membri_cu_beneficiu:  # Am schimbat numele listei interne
+        """Actualizează înregistrările din DEPCRED.db cu dividendul calculat."""
+        if not self.membri_cu_dividend:  # Am schimbat numele listei interne
             QMessageBox.warning(self, "Lipsă Date",
-                                "Nu există membri cu beneficiu calculat pentru transfer.")
+                                "Nu există membri cu dividend calculat pentru transfer.")
             return
 
         reply = QMessageBox.question(
             self, "Confirmare Transfer",
-            f"Sunteți sigur că doriți să transferați beneficiul calculat "
+            f"Sunteți sigur că doriți să transferați dividendul calculat "
             f"pentru anul {self.an_selectat} în soldurile din Ianuarie {self.an_selectat + 1}?\n\n"
             "Această operațiune va actualiza baza de date DEPCRED.db și nu poate fi anulată ușor."
             "Asigurați-vă că ați rulat deja 'Generare Lună Nouă' pentru Ianuarie "
@@ -540,9 +536,9 @@ class DividendeWidget(QWidget):
             progress_dialog = ProgressDialog(
                 parent=self,
                 titlu="Transfer Beneficiu",
-                mesaj=f"Se transferă beneficiul pentru {len(self.membri_cu_beneficiu)} membri...",
+                mesaj=f"Se transferă dividendul pentru {len(self.membri_cu_dividend)} membri...",
                 min_val=0,
-                max_val=len(self.membri_cu_beneficiu)
+                max_val=len(self.membri_cu_dividend)
             )
 
             conn_depcred = None
@@ -564,12 +560,12 @@ class DividendeWidget(QWidget):
                 count_updated = 0
                 errored_members = []
 
-                total_membri = len(self.membri_cu_beneficiu)
-                for idx, membru_data in enumerate(self.membri_cu_beneficiu):
+                total_membri = len(self.membri_cu_dividend)
+                for idx, membru_data in enumerate(self.membri_cu_dividend):
                     # Verificăm dacă utilizatorul a anulat operația
                     if progress_dialog.este_anulat():
                         conn_depcred.rollback()
-                        afiseaza_info("Transferul beneficiului a fost anulat de utilizator.", self)
+                        afiseaza_info("Transferul dividendului a fost anulat de utilizator.", self)
                         return
 
                     # Actualizăm bara de progres
@@ -578,7 +574,7 @@ class DividendeWidget(QWidget):
                         f"Se procesează {idx + 1}/{total_membri}: Fișa {membru_data['nr_fisa']}...")
 
                     nr_fisa = membru_data["nr_fisa"]
-                    beneficiu = membru_data["beneficiu"]  # Folosim beneficiul calculat
+                    dividend = membru_data["dividend"]  # Folosim dividendul calculat
 
                     try:
                         # Cautam inregistrarea existenta pentru Ianuarie anul urmator
@@ -592,16 +588,16 @@ class DividendeWidget(QWidget):
                             sold_existent_ianuarie = Decimal(str(row[0]))
                             dep_deb_existent = Decimal(str(row[1] or '0.00'))
 
-                            # Adăugăm beneficiul la DEP_DEB (nu la DEP_CRED)
-                            nou_dep_deb = dep_deb_existent + beneficiu
+                            # Adăugăm dividendul la DEP_DEB (nu la DEP_CRED)
+                            nou_dep_deb = dep_deb_existent + dividend
 
-                            # Recalculăm soldul adăugând beneficiul
-                            nou_dep_sold = sold_existent_ianuarie + beneficiu
+                            # Recalculăm soldul adăugând dividendul
+                            nou_dep_sold = sold_existent_ianuarie + dividend
 
-                            # Actualizăm înregistrarea: adăugăm beneficiul la DEP_DEB și actualizăm soldul
+                            # Actualizăm înregistrarea: adăugăm dividendul la DEP_DEB și actualizăm soldul
                             cursor_depcred.execute("""
                                  UPDATE DEPCRED
-                                 SET DEP_DEB = ?, -- Adăugăm beneficiul la suma existentă pe coloana DEP_DEB
+                                 SET DEP_DEB = ?, -- Adăugăm dividendul la suma existentă pe coloana DEP_DEB
                                      DEP_SOLD = ? -- Setăm noul sold calculat
                                  WHERE NR_FISA = ? AND ANUL = ? AND LUNA = 1
                              """, (float(nou_dep_deb), float(nou_dep_sold), nr_fisa, an_viitor))
@@ -637,11 +633,11 @@ class DividendeWidget(QWidget):
                     QMessageBox.information(
                         self, "Transfer Complet",
                         f"S-au actualizat cu succes {count_updated} înregistrări în DEPCRED.db "
-                        f"pentru luna Ianuarie anul {an_viitor} cu beneficiul calculat."
+                        f"pentru luna Ianuarie anul {an_viitor} cu dividendul calculat."
                     )
                     # Golim tabelul si datele temporare dupa transferul reusit
                     self.tabel_dividende.setRowCount(0)
-                    self.membri_cu_beneficiu = []
+                    self.membri_cu_dividend = []
                     self.btn_transfera_beneficiu.setEnabled(False)
                     self.btn_export_excel.setEnabled(False)
 
@@ -668,7 +664,7 @@ class DividendeWidget(QWidget):
                 progress_dialog.inchide()
 
                 QMessageBox.critical(self, "Eroare BD Critică (Transfer)",
-                                     f"Eroare critică la transferul beneficiului în DEPCRED.db: {e}\nOperațiunea a fost anulată (rollback).")
+                                     f"Eroare critică la transferul dividendului în DEPCRED.db: {e}\nOperațiunea a fost anulată (rollback).")
 
             except Exception as e:
                 if conn_depcred:
@@ -690,11 +686,11 @@ class DividendeWidget(QWidget):
                     conn_depcred.close()
                 if conn_activi:  # Inchidem conexiunea la ACTIVI
                     conn_activi.close()
-    # --- Metoda de export actualizată (exporta BENEFICIUL si Suma Soldurilor Lunare) ---
+    # --- Metoda de export actualizată (exporta DIVIDENDUL si Suma Soldurilor Lunare) ---
     def _export_excel(self):
-        """Exportă datele din tabel (inclusiv Suma Soldurilor Lunare și Beneficiul) în format Excel."""
-        if not self.membri_cu_beneficiu:  # Am schimbat numele listei interne
-            QMessageBox.warning(self, "Lipsă Date", "Nu există date de exportat. Calculați beneficiul mai întâi.")
+        """Exportă datele din tabel (inclusiv Suma Soldurilor Lunare și Dividendul) în format Excel."""
+        if not self.membri_cu_dividend:  # Am schimbat numele listei interne
+            QMessageBox.warning(self, "Lipsă Date", "Nu există date de exportat. Calculați dividendul mai întâi.")
             return
 
         default_filename = f"Beneficiu_Anual_{self.an_selectat}.xlsx"  # Am schimbat numele implicit al fisierului
@@ -766,14 +762,14 @@ class DividendeWidget(QWidget):
             progress_dialog.seteaza_valoare(20)
 
             # Setăm maximul pentru bara de progres în funcție de numărul de membri
-            total_membri = len(self.membri_cu_beneficiu)
+            total_membri = len(self.membri_cu_dividend)
             progress_dialog.seteaza_interval(0, 100)  # Păstrăm intervalul 0-100 pentru procente
 
             # Scrie datele din lista interna cu formatare și culori alternante
             current_group = 0
             prev_nr_fisa = None
 
-            for row_idx, membru_data in enumerate(self.membri_cu_beneficiu, 2):  # Începe de la rândul 2 (sub antet)
+            for row_idx, membru_data in enumerate(self.membri_cu_dividend, 2):  # Începe de la rândul 2 (sub antet)
                 # Verificăm dacă utilizatorul a anulat operația
                 if progress_dialog.este_anulat():
                     progress_dialog.inchide()
@@ -822,7 +818,7 @@ class DividendeWidget(QWidget):
                 cell.number_format = '0.00'
 
                 # Beneficiu Calculat
-                cell = sheet.cell(row=row_idx, column=5, value=float(membru_data.get("beneficiu", Decimal(0.0))))
+                cell = sheet.cell(row=row_idx, column=5, value=float(membru_data.get("dividend", Decimal(0.0))))
                 cell.font = data_font
                 cell.alignment = data_alignment_right
                 cell.fill = row_fill
@@ -833,14 +829,14 @@ class DividendeWidget(QWidget):
             progress_dialog.seteaza_valoare(90)
 
             # Adaugă un rând pentru totaluri
-            if self.membri_cu_beneficiu:
-                total_row = len(self.membri_cu_beneficiu) + 2  # Rândul pentru totaluri
+            if self.membri_cu_dividend:
+                total_row = len(self.membri_cu_dividend) + 2  # Rândul pentru totaluri
 
                 # Calculează totalurile
-                total_sold_dec = sum(float(d.get("dep_sold_dec", Decimal(0.0))) for d in self.membri_cu_beneficiu)
+                total_sold_dec = sum(float(d.get("dep_sold_dec", Decimal(0.0))) for d in self.membri_cu_dividend)
                 total_suma_solduri = sum(
-                    float(d.get("suma_solduri_lunare", Decimal(0.0))) for d in self.membri_cu_beneficiu)
-                total_beneficiu = sum(float(d.get("beneficiu", Decimal(0.0))) for d in self.membri_cu_beneficiu)
+                    float(d.get("suma_solduri_lunare", Decimal(0.0))) for d in self.membri_cu_dividend)
+                total_dividend = sum(float(d.get("dividend", Decimal(0.0))) for d in self.membri_cu_dividend)
 
                 # Stilul pentru totaluri
                 total_font = Font(name='Arial', size=11, bold=True)
@@ -855,7 +851,7 @@ class DividendeWidget(QWidget):
                 sheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=2)
 
                 # Scrie valorile totalurilor
-                for col_idx, total_value in enumerate([total_sold_dec, total_suma_solduri, total_beneficiu], 3):
+                for col_idx, total_value in enumerate([total_sold_dec, total_suma_solduri, total_dividend], 3):
                     cell = sheet.cell(row=total_row, column=col_idx, value=total_value)
                     cell.font = total_font
                     cell.alignment = data_alignment_right
