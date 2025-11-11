@@ -2,7 +2,7 @@
 """
 Modul pentru generarea lunilor noi într-o aplicație CAR (Casa de Ajutor Reciproc).
 Include gestionarea cotizațiilor standard, a ratelor de împrumut moștenite din luna
-anterioară, adăugarea dividendelor în Ianuarie și funcționalități adiacente.
+anterioară și funcționalități adiacente.
 """
 
 import sys
@@ -137,7 +137,6 @@ class GenerareLunaNouaWidget(QWidget):
         self.loan_interest_rate_on_extinction = Decimal("0.004")
         self._load_interest_rate_config()
         self._dbs_missing = []
-        self.DB_ACTIVI = DB_ACTIVI
 
         # Construim UI și conectăm logger-ul
         self._check_essential_dbs()
@@ -171,7 +170,6 @@ class GenerareLunaNouaWidget(QWidget):
 
     def _check_essential_dbs(self):
         """Verifică existența fișierelor DB esențiale."""
-        # Notă: DB_ACTIVI nu este inclus aici, se verifică la nevoie în _get_dividend...
         self._dbs_missing = []
         all_ok = True
         for db_path in (DB_MEMBRII, DB_DEPCRED, DB_LICHIDATI):
@@ -182,52 +180,6 @@ class GenerareLunaNouaWidget(QWidget):
                 all_ok = False
         return all_ok
 
-    # !!! NOU: Metodă pentru a prelua dividendul unui membru !!!
-    def _get_dividend_for_member(self, nr_fisa: int) -> Decimal:
-        """
-        Preia valoarea dividendului pentru un membru din activi.db.
-        Apelată la generarea lunii Ianuarie.
-        """
-        dividend_val = Decimal("0.00")
-        progress_callback = getattr(self.worker_signals, 'progress', None)
-        db_activi_path = self.DB_ACTIVI
-
-        if not os.path.exists(db_activi_path):
-            msg = f"AVERTISMENT: Baza de date dividende ({os.path.basename(db_activi_path)}) LIPSA. Dividend=0 pt fisa {nr_fisa}."
-            logging.warning(msg)
-            if progress_callback:
-                progress_callback(msg)
-            return dividend_val
-
-        conn_a = None
-        try:
-            conn_a = sqlite3.connect(f"file:{db_activi_path}?mode=ro", uri=True)
-            cursor_a = conn_a.cursor()
-            cursor_a.execute("SELECT DIVIDEND FROM activi WHERE NR_FISA = ?", (nr_fisa,))
-            result = cursor_a.fetchone()
-            if result and result[0] is not None:
-                try:
-                    dividend_val = Decimal(str(result[0])).quantize(Decimal("0.01"), ROUND_HALF_UP)
-                except InvalidOperation:
-                    msg = f"EROARE: Valoare DIVIDEND invalidă în {os.path.basename(db_activi_path)} pt fisa {nr_fisa}: '{result[0]}'"
-                    logging.error(msg)
-                    if progress_callback:
-                        QMetaObject.invokeMethod(progress_callback, "emit", Qt.QueuedConnection, Q_ARG(str, msg))
-                    dividend_val = Decimal("0.00")
-        except sqlite3.Error as e:
-            msg = f"EROARE DB Dividend: SQLite eroare pt fisa {nr_fisa} din {os.path.basename(db_activi_path)}: {e}"
-            logging.error(msg, exc_info=True)
-            if progress_callback:
-                QMetaObject.invokeMethod(progress_callback, "emit", Qt.QueuedConnection, Q_ARG(str, msg))
-        except Exception as e_gen:
-            msg = f"EROARE Generală Dividend: Eroare la preluare pt fisa {nr_fisa}: {e_gen}"
-            logging.error(msg, exc_info=True)
-            if progress_callback:
-                QMetaObject.invokeMethod(progress_callback, "emit", Qt.QueuedConnection, Q_ARG(str, msg))
-        finally:
-            if conn_a:
-                conn_a.close()
-        return dividend_val
 
     def _load_interest_rate_config(self):
         """Încarcă rata dobânzii din fișierul de configurare."""
@@ -710,8 +662,8 @@ class GenerareLunaNouaWidget(QWidget):
     ) -> None:
         """
         Logica principală de generare a lunii noi (rulează în thread).
-        Include cotizație standard, rată împrumut moștenită din luna anterioară,
-        dividend în ianuarie și calcul dobândă la stingere împrumut.
+        Include cotizație standard, rată împrumut moștenită din luna anterioară
+        și calcul dobândă la stingere împrumut.
         """
         def report_progress(message: str, is_detailed: bool = False) -> None:
             """
@@ -846,15 +798,6 @@ class GenerareLunaNouaWidget(QWidget):
                     impr_cred_nou = self._get_inherited_loan_rate(cursor_d, nr_fisa, source_period_val)
                     dep_deb_nou = cotizatie_standard
 
-                    # Adăugare dividend în ianuarie
-                    if target_month == 1:
-                        dividend = self._get_dividend_for_member(nr_fisa)
-                        if dividend > Decimal("0.00"):
-                            report_progress(
-                                f"💰 Fișa {nr_fisa} ({nume}): Cotizație={cotizatie_standard:.2f}, Dividend={dividend:.2f}, Total={cotizatie_standard + dividend:.2f}"
-                            )
-                            dep_deb_nou += dividend
-
                     # Ajustăm plata să nu depășească soldul
                     if impr_sold_sursa <= Decimal("0.005"):
                         impr_cred_nou = Decimal("0.00")
@@ -921,10 +864,9 @@ class GenerareLunaNouaWidget(QWidget):
                     total_sold_dep_nou += dep_sold_nou
                     total_sold_impr_nou += impr_sold_nou
 
-                    # Afișăm un rezumat pentru fiecare membru care nu are dividend și nu a stins un împrumut
-                    if target_month != 1 and not (
-                            impr_sold_sursa > Decimal('0.005') and impr_sold_nou == Decimal("0.00")):
-                        # Afișăm detalii pentru cel mult 10 membri (pentru a nu încărca UI-ul)
+                    # Afișăm un rezumat pentru membrii care nu au stins un împrumut
+                    if not (impr_sold_sursa > Decimal('0.005') and impr_sold_nou == Decimal("0.00")):
+                        # Afișăm detalii pentru primii 10 membri și apoi la fiecare 50 (pentru a nu încărca UI-ul)
                         if i < 10 or i % 50 == 0:
                             report_progress(
                                 f"👤 Fișa {nr_fisa} ({nume}): Cotizație={dep_deb_nou:.2f}, "
