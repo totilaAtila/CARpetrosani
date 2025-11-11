@@ -19,14 +19,14 @@ def setup_early_database_patching():
 
     currency_logic = CurrencyLogic()
 
-    # Maparea bazelor RON -> EUR
+    # Maparea bazelor RON -> EUR (DOAR cele procesate de conversie_widget.py)
     db_mapping = {
         "MEMBRII.db": "MEMBRIIEUR.db",
         "DEPCRED.db": "DEPCREDEUR.db",
         "activi.db": "activiEUR.db",
         "INACTIVI.db": "INACTIVIEUR.db",
-        "LICHIDATI.db": "LICHIDATIEUR.db",
-        "CHITANTE.db": "CHITANTEEUR.db"  # Adăugat pentru completitudine
+        "LICHIDATI.db": "LICHIDATIEUR.db"
+        # NOTĂ: CHITANTE.db nu se convertește - este doar pentru tipărire
     }
 
     def patch_module_database_paths(module):
