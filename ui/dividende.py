@@ -124,14 +124,14 @@ class DividendeWidget(QWidget):
         buttons_layout = QHBoxLayout()
         self.btn_clear_activi = QPushButton("Șterge Date Calcul Anterioare")  # Am schimbat textul sa fie mai clar
         self.btn_populeaza_calculeaza = QPushButton("Calculează Dividende")
-        self.btn_transfera_dividend= QPushButton("Transferă Dividende în Sold")
-        self.btn_transfera_beneficiu.setEnabled(False)
+        self.btn_transfera_dividend = QPushButton("Transferă Dividende în Sold")
+        self.btn_transfera_dividend.setEnabled(False)
         self.btn_export_excel = QPushButton("Exportă Calcul în Excel")  # Am schimbat textul
         self.btn_export_excel.setEnabled(False)
 
         buttons_layout.addWidget(self.btn_clear_activi)
         buttons_layout.addWidget(self.btn_populeaza_calculeaza)
-        buttons_layout.addWidget(self.btn_transfera_beneficiu)
+        buttons_layout.addWidget(self.btn_transfera_dividend)
         buttons_layout.addWidget(self.btn_export_excel)
         layout.addLayout(buttons_layout)
 
@@ -141,7 +141,7 @@ class DividendeWidget(QWidget):
         self.tabel_dividende.setHorizontalHeaderLabels([
             "Nr. fișă", "Nume și prenume", "Sold Dec. An Calcul",  # Pastram soldul din Dec. pentru referinta
             "Suma Solduri Lunare (S membru)",  # Noua coloana
-            "Beneficiu Calculat (B)"  # Nume actualizat
+            "Dividend Calculat (B)"
         ])
         # Setam marimea coloanelor
         self.tabel_dividende.setColumnWidth(0, 60)
@@ -194,7 +194,7 @@ class DividendeWidget(QWidget):
         """Setează cursorul de mână pentru elemente interactive."""
         hand_widgets = [
             self.combo_an, self.btn_clear_activi,
-            self.btn_populeaza_calculeaza, self.btn_transfera_beneficiu,  # Am schimbat numele butonului
+            self.btn_populeaza_calculeaza, self.btn_transfera_dividend,  # Am schimbat numele butonului
             self.btn_export_excel
         ]
         for widget in hand_widgets:
@@ -206,7 +206,7 @@ class DividendeWidget(QWidget):
         self.combo_an.currentIndexChanged.connect(self._an_selection_changed)
         self.btn_clear_activi.clicked.connect(self._clear_activi)
         self.btn_populeaza_calculeaza.clicked.connect(self._populeaza_activi_calculeaza)
-        self.btn_transfera_beneficiu.clicked.connect(self._transfera_beneficiu)  # Am schimbat numele slotului
+        self.btn_transfera_dividend.clicked.connect(self._transfera_dividend)
         self.btn_export_excel.clicked.connect(self._export_excel)
 
     def _load_years(self):
@@ -246,13 +246,13 @@ class DividendeWidget(QWidget):
             self.membri_cu_dividend = []  # Am schimbat numele listei interne
             self.edit_profit.clear()  # Acum golim doar inputul de Profit
             # self.edit_cheltuieli.clear() # Eliminat
-            self.btn_transfera_beneficiu.setEnabled(False)  # Am schimbat numele butonului
+            self.btn_transfera_dividend.setEnabled(False)  # Am schimbat numele butonului
             self.btn_export_excel.setEnabled(False)
 
         except ValueError:
             self.an_selectat = None
             QMessageBox.warning(self, "An Invalid", "Anul selectat nu este valid.")
-            self.btn_transfera_beneficiu.setEnabled(False)  # Am schimbat numele butonului
+            self.btn_transfera_dividend.setEnabled(False)  # Am schimbat numele butonului
             self.btn_export_excel.setEnabled(False)
 
     def _clear_activi(self):
@@ -271,7 +271,7 @@ class DividendeWidget(QWidget):
                 conn.commit()
                 self.tabel_dividende.setRowCount(0)
                 self.membri_cu_dividend = []  # Am schimbat numele listei interne
-                self.btn_transfera_beneficiu.setEnabled(False)  # Am schimbat numele butonului
+                self.btn_transfera_dividend.setEnabled(False)  # Am schimbat numele butonului
                 self.btn_export_excel.setEnabled(False)
                 QMessageBox.information(self, "Succes", "Datele calculate anterior au fost golite.")
             except sqlite3.Error as e:
@@ -397,7 +397,7 @@ class DividendeWidget(QWidget):
                                         "Suma totală a soldurilor lunare cumulate (S total) este 0 sau negativă. Nu se poate calcula dividendul.")
                 return  # Nu se poate calcula daca S_total e 0 sau negativ
 
-            # --- Pasul 3: Calculează Beneficiul (B) pentru fiecare membru ---
+            # --- Pasul 3: Calculează Dividendul (B) pentru fiecare membru ---
             # Golește ACTIVI.db înainte de populare
             conn_activi = sqlite3.connect(DB_ACTIVI)
             cursor_activi = conn_activi.cursor()
@@ -469,11 +469,11 @@ class DividendeWidget(QWidget):
                 # Verificam din nou daca exista Ianuarie anul urmator inainte de a activa butonul de transfer
                 cursor_depcred.execute("SELECT COUNT(*) FROM DEPCRED WHERE ANUL = ? AND LUNA = 1", (an_viitor,))
                 if cursor_depcred.fetchone()[0] > 0:
-                    self.btn_transfera_beneficiu.setEnabled(True)
+                    self.btn_transfera_dividend.setEnabled(True)
                 else:
                     # Daca nu exista Ianuarie anul urmator, avertizam si tinem butonul de transfer dezactivat
                     QMessageBox.warning(self, "Atenție",
-                                        f"Calculul a fost finalizat, dar luna Ianuarie {an_viitor} nu există. Butonul 'Transferă Beneficiu în Sold' rămâne dezactivat până la generarea acestei luni.")
+                                        f"Calculul a fost finalizat, dar luna Ianuarie {an_viitor} nu există. Butonul 'Transferă Dividende în Sold' rămâne dezactivat până la generarea acestei luni.")
 
                 self.btn_export_excel.setEnabled(True)
 
@@ -481,18 +481,18 @@ class DividendeWidget(QWidget):
                 self, "Calcul Complet",
                 f"S-au identificat {len(self.membri_cu_dividend)} membri cu solduri lunare cumulate pozitive.\n"
                 f"Suma totală a soldurilor lunare (S total): {S_total:.2f} lei.\n"
-                f"Beneficiul a fost calculat, afișat în tabel și salvat temporar în '{DB_ACTIVI}'."
+                f"Dividendul a fost calculat, afișat în tabel și salvat temporar în '{DB_ACTIVI}'."
             )
 
 
         except sqlite3.Error as e:
             QMessageBox.critical(self, "Eroare BD", f"Eroare la citirea/calculul datelor sau popularea 'Activi': {e}")
-            self.btn_transfera_beneficiu.setEnabled(False)
+            self.btn_transfera_dividend.setEnabled(False)
             self.btn_export_excel.setEnabled(False)
 
         except Exception as e:
             QMessageBox.critical(self, "Eroare Generală", f"A apărut o eroare neașteptată: {e}")
-            self.btn_transfera_beneficiu.setEnabled(False)
+            self.btn_transfera_dividend.setEnabled(False)
             self.btn_export_excel.setEnabled(False)
 
         finally:
@@ -514,7 +514,7 @@ class DividendeWidget(QWidget):
             QApplication.processEvents()
 
     # --- Metoda de transfer actualizată (va transfera DIVIDENDUL) ---
-    def _transfera_beneficiu(self):
+    def _transfera_dividend(self):
         """Actualizează înregistrările din DEPCRED.db cu dividendul calculat."""
         if not self.membri_cu_dividend:  # Am schimbat numele listei interne
             QMessageBox.warning(self, "Lipsă Date",
@@ -535,7 +535,7 @@ class DividendeWidget(QWidget):
             # --- Inițializăm bara de progres ---
             progress_dialog = ProgressDialog(
                 parent=self,
-                titlu="Transfer Beneficiu",
+                titlu="Transfer Dividende",
                 mesaj=f"Se transferă dividendul pentru {len(self.membri_cu_dividend)} membri...",
                 min_val=0,
                 max_val=len(self.membri_cu_dividend)
@@ -638,7 +638,7 @@ class DividendeWidget(QWidget):
                     # Golim tabelul si datele temporare dupa transferul reusit
                     self.tabel_dividende.setRowCount(0)
                     self.membri_cu_dividend = []
-                    self.btn_transfera_beneficiu.setEnabled(False)
+                    self.btn_transfera_dividend.setEnabled(False)
                     self.btn_export_excel.setEnabled(False)
 
                 else:
@@ -693,7 +693,7 @@ class DividendeWidget(QWidget):
             QMessageBox.warning(self, "Lipsă Date", "Nu există date de exportat. Calculați dividendul mai întâi.")
             return
 
-        default_filename = f"Beneficiu_Anual_{self.an_selectat}.xlsx"  # Am schimbat numele implicit al fisierului
+        default_filename = f"Dividende_Anual_{self.an_selectat}.xlsx"
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Salvează fișier Excel", default_filename, "Fișiere Excel (*.xlsx);;Toate Fișierele (*)"
         )
@@ -714,7 +714,7 @@ class DividendeWidget(QWidget):
             # Crearea workbook și foaie
             workbook = openpyxl.Workbook()
             sheet = workbook.active
-            sheet.title = f"Beneficiu {self.an_selectat}"  # Am schimbat numele foii
+            sheet.title = f"Dividende {self.an_selectat}"
 
             # Definirea stilurilor pentru Excel
             from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -817,7 +817,7 @@ class DividendeWidget(QWidget):
                 cell.fill = row_fill
                 cell.number_format = '0.00'
 
-                # Beneficiu Calculat
+                # Dividend Calculat
                 cell = sheet.cell(row=row_idx, column=5, value=float(membru_data.get("dividend", Decimal(0.0))))
                 cell.font = data_font
                 cell.alignment = data_alignment_right
@@ -895,11 +895,11 @@ if __name__ == "__main__":
 
     main_window = QWidget()
     main_layout = QVBoxLayout(main_window)
-    main_layout.addWidget(QLabel("<h3>Modul Calcul Beneficiu Anual</h3>"))  # Am schimbat titlul in fereastra de test
+    main_layout.addWidget(QLabel("<h3>Modul Calcul Dividende Anual</h3>"))
     dividende_widget = DividendeWidget()
     main_layout.addWidget(dividende_widget)
 
-    main_window.setWindowTitle("Calcul Beneficiu Anual")  # Am schimbat titlul ferestrei
+    main_window.setWindowTitle("Calcul Dividende Anual")
     main_window.setMinimumSize(900, 600)  # Ajustat latimea minima pentru noile coloane
     main_window.show()
 
