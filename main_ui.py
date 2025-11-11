@@ -1042,7 +1042,8 @@ class CARApp(QMainWindow):
             "DEPCRED.db": "DEPCREDEUR.db",
             "activi.db": "activiEUR.db",
             "INACTIVI.db": "INACTIVIEUR.db",
-            "LICHIDATI.db": "LICHIDATIEUR.db"
+            "LICHIDATI.db": "LICHIDATIEUR.db",
+            "CHITANTE.db": "CHITANTEEUR.db"  # Adăugat pentru completitudine
         }
 
         base_path = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
