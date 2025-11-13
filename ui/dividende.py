@@ -283,10 +283,9 @@ class DividendeWidget(QWidget):
     # ===== METODE DE VALIDARE (FIX 2) =====
     def _validate_member_data(self, cursor_depcred, an_calcul, an_viitor):
         """
-        Efectuează 3 verificări de integritate conform PYTHON_FIX_PROMPT.md:
+        Efectuează 2 verificări de integritate conform PYTHON_FIX_PROMPT.md:
         1. Membri în DEPCRED fără corespondent în MEMBRII
         2. Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
-        3. Membri eligibili fără date pentru Ianuarie anul următor
 
         Returnează lista de probleme găsite sau None dacă totul este OK.
         """
@@ -320,25 +319,6 @@ class DividendeWidget(QWidget):
                 "nr_fisa": nr_fisa,
                 "nume": nume or "NECUNOSCUT",
                 "problema": "DEP_SOLD = 0 în Decembrie (ineligibil pentru dividende)"
-            })
-
-        # Verificare 3: Membri eligibili fără date pentru Ianuarie anul următor
-        cursor_depcred.execute("""
-            SELECT DISTINCT d.NR_FISA, m.NUM_PREN
-            FROM DEPCRED d
-            JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
-            WHERE d.ANUL = ? AND d.LUNA = 12 AND d.DEP_SOLD > 0
-            AND NOT EXISTS (
-                SELECT 1 FROM DEPCRED d2
-                WHERE d2.NR_FISA = d.NR_FISA AND d2.ANUL = ? AND d2.LUNA = 1
-            )
-        """, (an_calcul, an_viitor))
-
-        for nr_fisa, nume in cursor_depcred.fetchall():
-            issues.append({
-                "nr_fisa": nr_fisa,
-                "nume": nume or "NECUNOSCUT",
-                "problema": f"Lipsește Ianuarie {an_viitor} (necesar pentru transfer dividende)"
             })
 
         return issues if issues else None
