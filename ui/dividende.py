@@ -283,11 +283,10 @@ class DividendeWidget(QWidget):
     # ===== METODE DE VALIDARE (FIX 2) =====
     def _validate_member_data(self, cursor_depcred, an_calcul, an_viitor):
         """
-        Efectuează 4 verificări de integritate conform PYTHON_FIX_PROMPT.md:
+        Efectuează 3 verificări de integritate conform PYTHON_FIX_PROMPT.md:
         1. Membri în DEPCRED fără corespondent în MEMBRII
-        2. Membri cu PRIMA = 0 în Decembrie
-        3. Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
-        4. Membri eligibili fără date pentru Ianuarie anul următor
+        2. Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
+        3. Membri eligibili fără date pentru Ianuarie anul următor
 
         Returnează lista de probleme găsite sau None dacă totul este OK.
         """
@@ -308,22 +307,7 @@ class DividendeWidget(QWidget):
                 "problema": "Membru în DEPCRED fără înregistrare în MEMBRII.db"
             })
 
-        # Verificare 2: Membri cu PRIMA = 0 în Decembrie
-        cursor_depcred.execute("""
-            SELECT d.NR_FISA, m.NUM_PREN
-            FROM DEPCRED d
-            JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
-            WHERE d.ANUL = ? AND d.LUNA = 12 AND (d.PRIMA = 0 OR d.PRIMA IS NULL)
-        """, (an_calcul,))
-
-        for nr_fisa, nume in cursor_depcred.fetchall():
-            issues.append({
-                "nr_fisa": nr_fisa,
-                "nume": nume or "NECUNOSCUT",
-                "problema": "PRIMA = 0 în Decembrie (ar trebui să fie 1)"
-            })
-
-        # Verificare 3: Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
+        # Verificare 2: Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
         cursor_depcred.execute("""
             SELECT d.NR_FISA, m.NUM_PREN
             FROM DEPCRED d
@@ -338,7 +322,7 @@ class DividendeWidget(QWidget):
                 "problema": "DEP_SOLD = 0 în Decembrie (ineligibil pentru dividende)"
             })
 
-        # Verificare 4: Membri eligibili fără date pentru Ianuarie anul următor
+        # Verificare 3: Membri eligibili fără date pentru Ianuarie anul următor
         cursor_depcred.execute("""
             SELECT DISTINCT d.NR_FISA, m.NUM_PREN
             FROM DEPCRED d
