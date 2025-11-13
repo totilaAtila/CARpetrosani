@@ -280,6 +280,150 @@ class DividendeWidget(QWidget):
                 if conn:
                     conn.close()
 
+    # ===== METODE DE VALIDARE (FIX 2) =====
+    def _validate_member_data(self, cursor_depcred, an_calcul, an_viitor):
+        """
+        Efectuează 4 verificări de integritate conform PYTHON_FIX_PROMPT.md:
+        1. Membri în DEPCRED fără corespondent în MEMBRII
+        2. Membri cu PRIMA = 0 în Decembrie
+        3. Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
+        4. Membri eligibili fără date pentru Ianuarie anul următor
+
+        Returnează lista de probleme găsite sau None dacă totul este OK.
+        """
+        issues = []
+
+        # Verificare 1: Membri în DEPCRED fără corespondent în MEMBRII
+        cursor_depcred.execute("""
+            SELECT DISTINCT d.NR_FISA
+            FROM DEPCRED d
+            LEFT JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
+            WHERE d.ANUL = ? AND m.NR_FISA IS NULL
+        """, (an_calcul,))
+
+        for (nr_fisa,) in cursor_depcred.fetchall():
+            issues.append({
+                "nr_fisa": nr_fisa,
+                "nume": "NECUNOSCUT",
+                "problema": "Membru în DEPCRED fără înregistrare în MEMBRII.db"
+            })
+
+        # Verificare 2: Membri cu PRIMA = 0 în Decembrie
+        cursor_depcred.execute("""
+            SELECT d.NR_FISA, m.NUM_PREN
+            FROM DEPCRED d
+            JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
+            WHERE d.ANUL = ? AND d.LUNA = 12 AND (d.PRIMA = 0 OR d.PRIMA IS NULL)
+        """, (an_calcul,))
+
+        for nr_fisa, nume in cursor_depcred.fetchall():
+            issues.append({
+                "nr_fisa": nr_fisa,
+                "nume": nume or "NECUNOSCUT",
+                "problema": "PRIMA = 0 în Decembrie (ar trebui să fie 1)"
+            })
+
+        # Verificare 3: Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
+        cursor_depcred.execute("""
+            SELECT d.NR_FISA, m.NUM_PREN
+            FROM DEPCRED d
+            JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
+            WHERE d.ANUL = ? AND d.LUNA = 12 AND (d.DEP_SOLD = 0 OR d.DEP_SOLD IS NULL)
+        """, (an_calcul,))
+
+        for nr_fisa, nume in cursor_depcred.fetchall():
+            issues.append({
+                "nr_fisa": nr_fisa,
+                "nume": nume or "NECUNOSCUT",
+                "problema": "DEP_SOLD = 0 în Decembrie (ineligibil pentru dividende)"
+            })
+
+        # Verificare 4: Membri eligibili fără date pentru Ianuarie anul următor
+        cursor_depcred.execute("""
+            SELECT DISTINCT d.NR_FISA, m.NUM_PREN
+            FROM DEPCRED d
+            JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
+            WHERE d.ANUL = ? AND d.LUNA = 12 AND d.DEP_SOLD > 0
+            AND NOT EXISTS (
+                SELECT 1 FROM DEPCRED d2
+                WHERE d2.NR_FISA = d.NR_FISA AND d2.ANUL = ? AND d2.LUNA = 1
+            )
+        """, (an_calcul, an_viitor))
+
+        for nr_fisa, nume in cursor_depcred.fetchall():
+            issues.append({
+                "nr_fisa": nr_fisa,
+                "nume": nume or "NECUNOSCUT",
+                "problema": f"Lipsește Ianuarie {an_viitor} (necesar pentru transfer dividende)"
+            })
+
+        return issues if issues else None
+
+    def _show_validation_dialog(self, issues):
+        """
+        Afișează un dialog cu problemele de validare găsite.
+        Include tabel cu detalii și buton de export CSV.
+        """
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Warning)
+        dialog.setWindowTitle("Probleme de Integritate Date")
+        dialog.setText(f"⚠️ Au fost găsite {len(issues)} probleme care trebuie rezolvate înainte de calcul:")
+
+        # Creăm un widget custom pentru afișarea detaliilor
+        details_widget = QWidget()
+        details_layout = QVBoxLayout(details_widget)
+
+        # Tabel cu probleme
+        table = QTableWidget()
+        table.setRowCount(len(issues))
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Nr. Fișă", "Nume", "Problemă"])
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        table.setMinimumWidth(600)
+        table.setMinimumHeight(300)
+
+        for row, issue in enumerate(issues):
+            table.setItem(row, 0, QTableWidgetItem(str(issue["nr_fisa"])))
+            table.setItem(row, 1, QTableWidgetItem(issue["nume"]))
+            table.setItem(row, 2, QTableWidgetItem(issue["problema"]))
+
+        details_layout.addWidget(table)
+
+        # Buton export CSV
+        export_btn = QPushButton(f"💾 Exportă Listă Probleme CSV")
+        export_btn.clicked.connect(lambda: self._export_validation_issues_csv(issues))
+        details_layout.addWidget(export_btn)
+
+        # Afișăm dialogul cu widget custom
+        dialog.setDetailedText("")  # Activăm zona de detalii
+        dialog.layout().addWidget(details_widget, 1, 0, 1, dialog.layout().columnCount())
+
+        dialog.exec_()
+
+    def _export_validation_issues_csv(self, issues):
+        """Exportă problemele de validare într-un fișier CSV."""
+        default_filename = f"Membri_Problematici_{self.an_selectat}.csv"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Salvează fișier CSV", default_filename, "Fișiere CSV (*.csv);;Toate Fișierele (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            import csv
+            with open(file_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(['Nr. Fișă', 'Nume', 'Problemă'])
+                for issue in issues:
+                    writer.writerow([issue['nr_fisa'], issue['nume'], issue['problema']])
+
+            QMessageBox.information(self, "Export Reușit",
+                                    f"Lista problemelor a fost exportată în:\n{file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Eroare Export",
+                                 f"Eroare la exportul CSV: {e}")
+
     # --- Metoda de calcul actualizată ---
     def _populeaza_activi_calculeaza(self):
         """
@@ -358,10 +502,24 @@ class DividendeWidget(QWidget):
                 JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA -- JOIN cu tabela din baza de date atasata
                 WHERE d.ANUL = ? AND d.DEP_SOLD > 0 -- Doar inregistrarile cu sold pozitiv din anul selectat
                 GROUP BY d.NR_FISA, m.NUM_PREN -- Grupam dupa fisa si nume pentru a calcula suma soldurilor per membru
-                HAVING SUM(d.DEP_SOLD) > 0 -- Ne asiguram ca suma totala > 0 pentru a fi eligibil
+                HAVING SUM(d.DEP_SOLD) > 0 AND MAX(CASE WHEN d.LUNA = 12 THEN d.DEP_SOLD ELSE 0 END) > 0 -- Sold pozitiv total ȘI în Decembrie
             """, (self.an_selectat,))
 
             membri_eligibili_raw = cursor_depcred.fetchall()
+
+            # ===== FIX 2: VALIDARE COMPREHENSIVĂ =====
+            # Verificăm integritatea datelor ÎNAINTE de calcul
+            validation_issues = self._validate_member_data(cursor_depcred, self.an_selectat, an_viitor)
+
+            if validation_issues:
+                # Afișăm dialogul cu problemele găsite
+                self._show_validation_dialog(validation_issues)
+                # DETACH înainte de return
+                try:
+                    cursor_depcred.execute("DETACH DATABASE memb_db")
+                except sqlite3.Error:
+                    pass
+                return  # Blocăm calculul până când problemele sunt rezolvate
 
             # --- DETACH DATABASE dupa utilizare ---
             try:
