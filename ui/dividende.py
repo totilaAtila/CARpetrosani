@@ -24,6 +24,7 @@ else:
 DB_MEMBRII = os.path.join(BASE_RESOURCE_PATH, "MEMBRII.db")
 DB_DEPCRED = os.path.join(BASE_RESOURCE_PATH, "DEPCRED.db")
 DB_ACTIVI = os.path.join(BASE_RESOURCE_PATH, "ACTIVI.db")
+DB_LICHIDATI = os.path.join(BASE_RESOURCE_PATH, "LICHIDATI.db")
 
 
 class DividendeWidget(QWidget):
@@ -283,13 +284,25 @@ class DividendeWidget(QWidget):
     # ===== METODE DE VALIDARE (FIX 2) =====
     def _validate_member_data(self, cursor_depcred, an_calcul, an_viitor):
         """
-        Efectuează 2 verificări de integritate conform PYTHON_FIX_PROMPT.md:
-        1. Membri în DEPCRED fără corespondent în MEMBRII
-        2. Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
+        Efectuează 3 verificări de integritate (consistente cu GenerareLuna):
+        1. Membri din DEPCRED fără corespondent în MEMBRII
+        2. Membri activi (nu lichidați) complet omiși din anul de calcul
+        3. Membri cu DEP_SOLD = 0 sau ≤ 0.005 în Decembrie (ineligibili)
 
+        Pentru cazurile 2 și 3, afișează ultima perioadă cu sold activ.
         Returnează lista de probleme găsite sau None dacă totul este OK.
         """
         issues = []
+
+        # ATTACH LICHIDATI.db pentru a verifica membri lichidați
+        full_db_lichidati_path = os.path.abspath(DB_LICHIDATI)
+        lichidati_attached = False
+        try:
+            cursor_depcred.execute("ATTACH DATABASE ? AS lichidati_db", (full_db_lichidati_path,))
+            lichidati_attached = True
+        except sqlite3.Error as e:
+            # Dacă LICHIDATI.db nu există sau nu poate fi atașat, continuăm fără (presupunem că nu există lichidați)
+            print(f"Avertisment: Nu s-a putut atașa LICHIDATI.db: {e}")
 
         # Verificare 1: Membri în DEPCRED fără corespondent în MEMBRII
         cursor_depcred.execute("""
@@ -306,20 +319,68 @@ class DividendeWidget(QWidget):
                 "problema": "Membru în DEPCRED fără înregistrare în MEMBRII.db"
             })
 
-        # Verificare 2: Membri cu DEP_SOLD = 0 în Decembrie (ineligibili)
-        cursor_depcred.execute("""
-            SELECT d.NR_FISA, m.NUM_PREN
-            FROM DEPCRED d
-            JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
-            WHERE d.ANUL = ? AND d.LUNA = 12 AND (d.DEP_SOLD = 0 OR d.DEP_SOLD IS NULL)
+        # Verificare 2: Membri activi (nu lichidați) care lipsesc complet din anul de calcul
+        if lichidati_attached:
+            lichidati_check = "AND l.NR_FISA IS NULL"
+            lichidati_join = "LEFT JOIN lichidati_db.LICHIDATI l ON m.NR_FISA = l.NR_FISA"
+        else:
+            lichidati_check = ""
+            lichidati_join = ""
+
+        cursor_depcred.execute(f"""
+            SELECT
+                m.NR_FISA,
+                m.NUM_PREN,
+                (SELECT MAX(d2.ANUL || '-' || printf('%02d', d2.LUNA))
+                 FROM DEPCRED d2
+                 WHERE d2.NR_FISA = m.NR_FISA AND d2.DEP_SOLD > 0.005) as ULTIMA_ACTIVITATE
+            FROM memb_db.MEMBRII m
+            {lichidati_join}
+            WHERE m.NR_FISA IS NOT NULL {lichidati_check}
+              AND NOT EXISTS (
+                  SELECT 1 FROM DEPCRED d
+                  WHERE d.NR_FISA = m.NR_FISA AND d.ANUL = ?
+              )
         """, (an_calcul,))
 
-        for nr_fisa, nume in cursor_depcred.fetchall():
+        for nr_fisa, nume, ultima_activitate in cursor_depcred.fetchall():
+            ultima_act_str = f", ultima activitate: {ultima_activitate}" if ultima_activitate else ", nicio activitate înregistrată"
             issues.append({
                 "nr_fisa": nr_fisa,
                 "nume": nume or "NECUNOSCUT",
-                "problema": "DEP_SOLD = 0 în Decembrie (ineligibil pentru dividende)"
+                "problema": f"Lipsește complet din {an_calcul}{ultima_act_str}"
             })
+
+        # Verificare 3: Membri cu DEP_SOLD = 0 sau ≤ 0.005 în Decembrie (ineligibili)
+        cursor_depcred.execute("""
+            SELECT
+                d.NR_FISA,
+                m.NUM_PREN,
+                d.DEP_SOLD,
+                (SELECT MAX(d2.ANUL || '-' || printf('%02d', d2.LUNA))
+                 FROM DEPCRED d2
+                 WHERE d2.NR_FISA = d.NR_FISA AND d2.DEP_SOLD > 0.005) as ULTIMA_ACTIVITATE
+            FROM DEPCRED d
+            JOIN memb_db.MEMBRII m ON d.NR_FISA = m.NR_FISA
+            WHERE d.ANUL = ? AND d.LUNA = 12
+              AND (d.DEP_SOLD IS NULL OR d.DEP_SOLD <= 0.005)
+        """, (an_calcul,))
+
+        for nr_fisa, nume, dep_sold, ultima_activitate in cursor_depcred.fetchall():
+            sold_str = f"{dep_sold:.2f}" if dep_sold is not None else "NULL"
+            ultima_act_str = f", ultima activitate: {ultima_activitate}" if ultima_activitate else ""
+            issues.append({
+                "nr_fisa": nr_fisa,
+                "nume": nume or "NECUNOSCUT",
+                "problema": f"DEP_SOLD = {sold_str} în Decembrie {an_calcul} (ineligibil){ultima_act_str}"
+            })
+
+        # DETACH LICHIDATI.db
+        if lichidati_attached:
+            try:
+                cursor_depcred.execute("DETACH DATABASE lichidati_db")
+            except sqlite3.Error as e:
+                print(f"Avertisment: Eroare la detașarea LICHIDATI.db: {e}")
 
         return issues if issues else None
 
