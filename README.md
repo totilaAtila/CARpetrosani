@@ -213,7 +213,7 @@ sume_lunare permite intervenții manuale și recalculări selective.
    - **Situație Trimestrială**: Raportare date pe trimestru
    - **Situație Anuală**: Sinteză anuală completă
    - **Statistici**: Dashboard cu totaluri, situații financiare și de membrii chitanțe etc.
-   - **Afișare Membri Inactivi**: Monitorizare membri cu lipsă activitate
+   - **Afișare Membri cu Date Incomplete**: Identifică și afișează membri care lipsesc din luna anterioară ultimei luni procesate (necesari pentru generarea lunii noi). Include funcționalitate de ștergere definitivă a membrilor selectați
 
 #### 4. **Listări și Chitanțe**
    - **Generare Chitanțe PDF**: Creare automată chitanțe lunare pentru membri
@@ -469,7 +469,7 @@ CARpetrosani/
 │   ├── vizualizare_trimestriala.py  # Vizualizare date trimestriale
 │   ├── vizualizare_anuala.py        # Vizualizare date anuale
 │   ├── verificare_fise.py           # Validare consistență date
-│   ├── afisare_membri_lichidati.py  # Afișare membri inactivi/lichidați
+│   ├── afisare_membri_lichidati.py  # Identificare membri cu date incomplete
 │   ├── listari.py                   # Generare chitanțe PDF pentru RON
 │   ├── listariEUR.py                # Generare chitanțe PDF pentru EUR
 │   ├── salvari.py                   # Operațiuni salvare/backup
