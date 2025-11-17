@@ -205,7 +205,7 @@ sume_lunare permite intervenții manuale și recalculări selective.
 
 
    - **Împrumuturi Noi**: Instrument adiacent strict pentru Sume lunare. Permite vizualizarea, marcarea și copierea numelor membrilor la care trebuie stabilită Prima rată și lipirea numelui respectiv în căsuța de căutare din Sume lunare. De asemenea afișează lista velor vare au primit împrumut în luna sursă, ajutând utilizatorul să consemneze respectivul împrumut (Fereastră separată - F12)
-   - **Dividende**: Calculare și distribuire dividende pentru membri activi
+   - **Dividende**: Modul separat pentru calculul dividendelor anuale. Calculează dividende pe baza sumei soldurilor lunare ale membrilor activi din anul selectat. Permite transferul manual al dividendelor calculate în luna Ianuarie a anului următor prin actualizarea DEP_DEB și DEP_SOLD
    - **Calculator**: Calculator integrat cu funcții avansate (Ctrl+Alt+C)
 
 #### 3. **Vizualizări și Raportări**
@@ -231,7 +231,7 @@ sume_lunare permite intervenții manuale și recalculări selective.
 
 Scop și context
 
-Modul GUI PyQt5 pentru “Generare Lună Nouă” în aplicația CAR. Generează înregistrările lunare în DEPCRED.db, pe baza stării din luna anterioară, aplică cotizații, moștenește rate, adaugă dividende în ianuarie și calculează dobânda la stingerea împrumutului. Folosește MEMBRII.db și LICHIDATI.db ca surse și scrie în DEPCRED.db. Verifică existența fișierelor și afișează erori dacă lipsesc.
+Modul GUI PyQt5 pentru "Generare Lună Nouă" în aplicația CAR. Generează înregistrările lunare în DEPCRED.db, pe baza stării din luna anterioară, aplică cotizații, moștenește rate și calculează dobânda la stingerea împrumutului. Folosește MEMBRII.db și LICHIDATI.db ca surse și scrie în DEPCRED.db. Verifică existența fișierelor și afișează erori dacă lipsesc. NOTĂ: Dividendele se gestionează separat prin modulul Dividende.
 
 
 Baze de date și fișiere
@@ -260,7 +260,7 @@ Citește impr_sold și dep_sold din luna sursă; dacă lipsesc, omite. Inițiali
 
 Moștenește rata plătită luna anterioară, doar dacă nu există împrumut nou în luna sursă. Valoarea este quantizată la 0,01; altfel 0,00.
 
-Setează dep_deb_nou = cotizație_standard. În ianuarie adaugă dividendul din ACTIVI.db (dacă există și valid).
+Setează dep_deb_nou = cotizație_standard (aplicat uniform pentru toate lunile).
 
 Plafonează impr_cred_nou la soldul sursă; dacă soldul sursă ≤ 0.005, rata devine 0.00.
 
@@ -312,7 +312,7 @@ Prag zeroizare împrumut: 0.005.
 
 Moștenire rată doar dacă nu există impr_deb în luna sursă.
 
-Dividend doar în ianuarie, dacă ACTIVI.db prezent și valoare validă.
+Cotizație standard aplicată uniform în toate lunile (dividendele se gestionează separat prin modulul Dividende).
 
 Rotunjiri: sume la 0.01, rata la 0.000001, dobândă la 0.01.
 
@@ -632,7 +632,7 @@ Interpretare:
 
 dep_sold_sursa = sold anterior al depozitului.
 
-dep_deb_nou = sumă nou depusă (de obicei cotizația standard + eventual dividend în ianuarie).
+dep_deb_nou = sumă nou depusă (de obicei cotizația standard în generare_luna.py; dividendele se adaugă separat prin modulul Dividende).
 
 dep_cred_nou = sume retrase din depozit.
 
@@ -695,7 +695,7 @@ Sinteză practică
 Tip sold	Formula	Observații
 
 Împrumut nou	impr_sold_nou = impr_sold_sursa + impr_deb_nou - impr_cred_nou	Dacă < 0.005 ⇒ 0
-Depozit nou	dep_sold_nou = dep_sold_sursa + dep_deb_nou - dep_cred_nou	În ianuarie: dep_deb_nou += dividend
+Depozit nou	dep_sold_nou = dep_sold_sursa + dep_deb_nou - dep_cred_nou	dep_deb_nou = cotizația standard în generare_luna.py
 Dobândă lichidare	dobanda = SUM(impr_sold) × rata_lichidare	doar la stingerea totala
 ```
 
