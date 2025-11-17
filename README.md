@@ -36,7 +36,7 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
    - **Verificare Fișe**: Validare consistență date membri
 
 #### 2. **Operațiuni Financiare**
-   - **Sume Lunare**: Introducere plăți lunare cu calculator utomatizat pentru dobândă integrat
+   - **Sume Lunare**: Introducere plăți lunare cu calculator automatizat pentru dobândă integrat
    - Rezumat amănunțit al modulului sume_lunare
 
 
@@ -460,7 +460,10 @@ CARpetrosani/
 │
 ├── ui/                              # Module interfață utilizator
 │   ├── statistici.py                # Dashboard statistici
-│   ├── adaugare_membru.py           # Adăugare membri noi
+│   ├── adaugare_membru.py           # Widget adăugare membri noi
+│   ├── adauga_membru.py             # Logică adăugare membri (modul auxiliar)
+│   ├── actualizare_membru.py        # Widget actualizare date membri
+│   ├── modificare_membru.py         # Logică modificare membri (modul auxiliar)
 │   ├── sume_lunare.py               # Introducere plăți lunare
 │   ├── lichidare_membru.py          # Procesare lichidări
 │   ├── stergere_membru.py           # Ștergere membri
@@ -478,6 +481,7 @@ CARpetrosani/
 │   ├── generare_luna.py             # Generare lună nouă automată
 │   ├── optimizare_index.py          # Optimizare performanță baze
 │   ├── despre.py                    # Informații aplicație
+│   ├── validari.py                  # Funcții validare date (modul utilitar)
 │   └── ...
 │
 ├── conversie_widget.py              # Widget conversie RON→EUR
