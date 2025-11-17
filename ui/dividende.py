@@ -704,6 +704,31 @@ class DividendeWidget(QWidget):
                                 "Nu există membri cu dividend calculat pentru transfer.")
             return
 
+        # Validare critică: verificăm că Ianuarie anul viitor există înainte de transfer
+        an_viitor = self.an_selectat + 1
+        conn_check = None
+        try:
+            conn_check = sqlite3.connect(DB_DEPCRED)
+            cursor_check = conn_check.cursor()
+            cursor_check.execute("SELECT COUNT(*) FROM DEPCRED WHERE ANUL = ? AND LUNA = 1", (an_viitor,))
+            if cursor_check.fetchone()[0] == 0:
+                QMessageBox.critical(
+                    self, "Eroare - Lipsă Ianuarie",
+                    f"Luna Ianuarie {an_viitor} nu există în baza de date!\n\n"
+                    f"Vă rugăm să generați mai întâi luna Ianuarie {an_viitor} folosind "
+                    f"funcția 'Generare Lună Nouă' înainte de a transfera dividendele."
+                )
+                return
+        except sqlite3.Error as e:
+            QMessageBox.critical(
+                self, "Eroare Bază Date",
+                f"Eroare la verificarea existenței lunii Ianuarie {an_viitor}:\n{e}"
+            )
+            return
+        finally:
+            if conn_check:
+                conn_check.close()
+
         reply = QMessageBox.question(
             self, "Confirmare Transfer",
             f"Sunteți sigur că doriți să transferați dividendul calculat "
@@ -783,7 +808,7 @@ class DividendeWidget(QWidget):
                                  SET DEP_DEB = ?, -- Adăugăm dividendul la suma existentă pe coloana DEP_DEB
                                      DEP_SOLD = ? -- Setăm noul sold calculat
                                  WHERE NR_FISA = ? AND ANUL = ? AND LUNA = 1
-                             """, (float(nou_dep_deb), float(nou_dep_sold), nr_fisa, an_viitor))
+                             """, (str(nou_dep_deb), str(nou_dep_sold), nr_fisa, an_viitor))
 
                             count_updated += 1
 

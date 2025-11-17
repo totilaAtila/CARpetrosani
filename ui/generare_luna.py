@@ -856,9 +856,9 @@ class GenerareLunaNouaWidget(QWidget):
                     insert_query = ("INSERT INTO depcred (nr_fisa, luna, anul, dobanda, impr_deb, impr_cred, impr_sold,"
                                     " dep_deb, dep_cred, dep_sold, prima) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)")
                     insert_params = (nr_fisa, target_month, target_year,
-                                     float(dobanda_noua), float(impr_deb_nou), float(impr_cred_nou),
-                                     float(impr_sold_nou), float(dep_deb_nou), float(dep_cred_nou),
-                                     float(dep_sold_nou))
+                                     str(dobanda_noua), str(impr_deb_nou), str(impr_cred_nou),
+                                     str(impr_sold_nou), str(dep_deb_nou), str(dep_cred_nou),
+                                     str(dep_sold_nou))
                     cursor_d.execute(insert_query, insert_params)
                     generati += 1
                     total_sold_dep_nou += dep_sold_nou
