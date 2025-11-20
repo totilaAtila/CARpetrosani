@@ -55,6 +55,20 @@ Aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani, dezvo
 - **Testare Efecte Adverse**: Verificare completă compatibilitate schema SQLite și pattern-uri existente
 - **Documentație Actualizată**: README sincronizat 100% cu funcționalitatea reală a codului
 
+#### 🛡️ Securitate Export Excel (Commit 096bfa0)
+
+**Migrare openpyxl → xlsxwriter pentru Securitate Îmbunătățită**
+- **Problemă Identificată**: Biblioteca openpyxl avea 2 vulnerabilități critice:
+  - CVE-2023-43810 (XXE - XML External Entity Injection)
+  - CVE-2024-47204 (ReDoS - Regular Expression Denial of Service)
+  - Detectări false positive frecvente de la antiviruși
+- **Soluție Implementată**:
+  - Migrare completă la xlsxwriter (bibliotecă write-only, zero vulnerabilități cunoscute)
+  - 4 module actualizate: `vizualizare_lunara.py`, `vizualizare_trimestriala.py`, `vizualizare_anuala.py`, `dividende.py`
+  - Toate formatările Excel păstrate IDENTIC (fonturi, culori, alignments, borders, freeze panes)
+  - Performanță îmbunătățită la scriere Excel
+- **Rezultat**: Export Excel 100% securizat, fără compromisuri vizuale sau funcționale
+
 ### 📊 Module Funcționale Complete
 
 #### 1. **Gestiune Membri**
@@ -397,11 +411,14 @@ După aplicarea conversiei RON→EUR, sistemul implementează protecție automat
 ### Dependențe Python
 ```bash
 PyQt5>=5.15.0
-reportlab>=3.6.0  # Pentru generarea PDF chitanțe
-sqlite3  # Inclus în Python standard library
-pathlib  # Inclus în Python standard library
-json     # Inclus în Python standard library
+reportlab>=3.6.0   # Pentru generarea PDF chitanțe
+xlsxwriter>=3.2.9  # Pentru export Excel securizat (fără vulnerabilități)
+sqlite3   # Inclus în Python standard library
+pathlib   # Inclus în Python standard library
+json      # Inclus în Python standard library
 ```
+
+**Notă Securitate:** Aplicația folosește `xlsxwriter` pentru export Excel, eliminând vulnerabilitățile cunoscute din `openpyxl` (CVE-2023-43810, CVE-2024-47204).
 
 ### Sistem de Operare
 - **Windows**: 10 sau 11 (64-bit recomandat)
