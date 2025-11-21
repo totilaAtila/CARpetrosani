@@ -371,7 +371,7 @@ class VizualizareTrimestrialaWidget(QWidget):
             progress.seteaza_text("Se conectează la baza de date...")
             progress.seteaza_valoare(20)
 
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cur = conn.cursor()
             placeholders = ",".join(["?"] * len(luni_trimestru))
 
@@ -421,7 +421,7 @@ class VizualizareTrimestrialaWidget(QWidget):
             progress.seteaza_text("Se obțin numele membrilor...")
             progress.seteaza_valoare(65)
 
-            conn_m = sqlite3.connect(DB_MEMBRII)
+            conn_m = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cur_m = conn_m.cursor()
             entries = []
 

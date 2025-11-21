@@ -65,7 +65,7 @@ class MemberIntegrityValidator:
 
         try:
             # Obține lista membrilor din MEMBRII
-            with sqlite3.connect(membrii_path) as conn_membrii:
+            with sqlite3.connect(membrii_path, timeout=30.0) as conn_membrii:
                 cursor = conn_membrii.cursor()
                 cursor.execute("SELECT NR_FISA, NUM_PREN FROM MEMBRII ORDER BY NR_FISA")
                 membrii_records = cursor.fetchall()
@@ -75,7 +75,7 @@ class MemberIntegrityValidator:
                 membrii_details = {record[0]: record[1] for record in membrii_records}
 
             # Obține lista membrilor distincți din DEPCRED
-            with sqlite3.connect(depcred_path) as conn_depcred:
+            with sqlite3.connect(depcred_path, timeout=30.0) as conn_depcred:
                 cursor = conn_depcred.cursor()
                 cursor.execute("SELECT DISTINCT NR_FISA FROM DEPCRED ORDER BY NR_FISA")
                 depcred_records = cursor.fetchall()
@@ -214,7 +214,7 @@ class DatabaseSchemaValidator:
             return validation_result
 
         try:
-            with sqlite3.connect(db_path) as conn:
+            with sqlite3.connect(db_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
 
                 # Verifică dacă tabela principală există
@@ -401,7 +401,7 @@ class ConversieWorker(QThread):
 
         # Validare DEPCRED - TOATE ÎNREGISTRĂRILE
         try:
-            with sqlite3.connect(db_paths['depcred']) as conn:
+            with sqlite3.connect(db_paths['depcred'], timeout=30.0) as conn:
                 cursor = conn.cursor()
 
                 cursor.execute("""
@@ -438,7 +438,7 @@ class ConversieWorker(QThread):
 
         # Validare MEMBRII - TOATE ÎNREGISTRĂRILE
         try:
-            with sqlite3.connect(db_paths['membrii']) as conn:
+            with sqlite3.connect(db_paths['membrii'], timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT NR_FISA, COTIZATIE_STANDARD FROM MEMBRII")
 
@@ -464,7 +464,7 @@ class ConversieWorker(QThread):
 
         # Validare ACTIVI - TOATE ÎNREGISTRĂRILE
         try:
-            with sqlite3.connect(db_paths['activi']) as conn:
+            with sqlite3.connect(db_paths['activi'], timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT NR_FISA, DEP_SOLD, DIVIDEND, BENEFICIU FROM ACTIVI")
 
@@ -532,7 +532,7 @@ class ConversieWorker(QThread):
         }
 
         try:
-            with sqlite3.connect(db_path) as conn:
+            with sqlite3.connect(db_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
 
                 cursor.execute("SELECT COUNT(*) FROM DEPCRED")
@@ -610,7 +610,7 @@ class ConversieWorker(QThread):
         }
 
         try:
-            with sqlite3.connect(db_path) as conn:
+            with sqlite3.connect(db_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
 
                 cursor.execute("SELECT COUNT(*) FROM MEMBRII")
@@ -670,7 +670,7 @@ class ConversieWorker(QThread):
         }
 
         try:
-            with sqlite3.connect(db_path) as conn:
+            with sqlite3.connect(db_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
 
                 cursor.execute("SELECT COUNT(*) FROM ACTIVI")
@@ -751,7 +751,7 @@ class ConversieWorker(QThread):
             rezultat["dest_size"] = dest_path.stat().st_size
 
             # Numără înregistrările pentru statistică
-            with sqlite3.connect(dest_path) as conn:
+            with sqlite3.connect(dest_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 table_name = DatabaseSchemaValidator.EXPECTED_SCHEMAS[db_name]['table']
                 cursor.execute(f"SELECT COUNT(*) FROM {table_name}")

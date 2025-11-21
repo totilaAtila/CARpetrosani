@@ -98,7 +98,7 @@ def finalize_update(nr_fisa, parent_widget):
     data_inscr = parent_widget.data_input.text().strip()
 
     try:
-        conn = sqlite3.connect("MEMBRII.db")
+        conn = sqlite3.connect("MEMBRII.db", timeout=30.0)
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE membrii

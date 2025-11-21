@@ -985,7 +985,7 @@ class StergereMembruWidget(QWidget):
 
                 logging.info(
                     f"Procesare {os.path.basename(db_path)}: Ștergere fișa {nr_fisa} din tabelul {table_name}...")
-                conn = sqlite3.connect(db_path)
+                conn = sqlite3.connect(db_path, timeout=30.0)
                 cursor = conn.cursor()
 
                 # Verificăm dacă tabelul există (EXACT cum este în baza de date)
@@ -1088,7 +1088,7 @@ class StergereMembruWidget(QWidget):
                 continue
 
             try:
-                conn = sqlite3.connect(db_path)
+                conn = sqlite3.connect(db_path, timeout=30.0)
                 cursor = conn.cursor()
 
                 # Verifică dacă tabelul există
@@ -1133,7 +1133,7 @@ class StergereMembruWidget(QWidget):
         results = {}
         conn = None
         try:
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT NR_FISA, NUM_PREN FROM membrii WHERE NUM_PREN LIKE ? COLLATE NOCASE ORDER BY NUM_PREN LIMIT 50",
@@ -1155,7 +1155,7 @@ class StergereMembruWidget(QWidget):
         conn = None
         nr_fisa_result = None
         try:
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cur = conn.cursor()
             cur.execute("SELECT NR_FISA FROM membrii WHERE NUM_PREN = ? COLLATE NOCASE", (name,))
             row = cur.fetchone()
@@ -1177,7 +1177,7 @@ class StergereMembruWidget(QWidget):
         conn = None
         member_data_result = None
         try:
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute(
@@ -1203,7 +1203,7 @@ class StergereMembruWidget(QWidget):
         data = []
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cur = conn.cursor()
             cur.execute("""
                 SELECT DOBANDA, IMPR_DEB, IMPR_CRED, IMPR_SOLD, LUNA, ANUL, DEP_DEB, DEP_CRED, DEP_SOLD, PRIMA

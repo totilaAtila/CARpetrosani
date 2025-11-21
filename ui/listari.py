@@ -151,7 +151,7 @@ class TimerBasedPDFGenerator:
             depcred_path = os.path.join(self.database_dir, "DEPCRED.db")
             membrii_path = os.path.join(self.database_dir, "MEMBRII.db")
 
-            with sqlite3.connect(depcred_path) as conn1, sqlite3.connect(membrii_path) as conn2:
+            with sqlite3.connect(depcred_path, timeout=30.0) as conn1, sqlite3.connect(membrii_path, timeout=30.0) as conn2:
                 cursor1 = conn1.cursor()
                 cursor2 = conn2.cursor()
 
@@ -409,7 +409,7 @@ class TimerBasedPDFGenerator:
         """Versiune cu semantică clară pentru STARTCH_PR"""
         try:
             chitante_path = os.path.join(self.database_dir, "CHITANTE.db")
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT ROWID, STARTCH_AC FROM CHITANTE LIMIT 1")
                 row = cursor.fetchone()
@@ -955,7 +955,7 @@ class ListariWidget(QWidget):
                 self.input_nr_chitanta.setText("1")
                 return
 
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT STARTCH_AC FROM CHITANTE LIMIT 1')
                 result = cursor.fetchone()
@@ -991,7 +991,7 @@ class ListariWidget(QWidget):
                 self.input_nr_chitante_tiparit.setText("0")
                 return
 
-            with sqlite3.connect(depcred_path) as conn:
+            with sqlite3.connect(depcred_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT COUNT(*) FROM DEPCRED WHERE LUNA=? AND ANUL=?', (luna, an))
                 result = cursor.fetchone()
@@ -1405,7 +1405,7 @@ class ListariWidget(QWidget):
         """Resetează numărul chitanței și continuă"""
         try:
             chitante_path = os.path.join(self.database_directory, "CHITANTE.db")
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT ROWID FROM CHITANTE LIMIT 1")
                 row_id = cursor.fetchone()
@@ -1563,7 +1563,7 @@ class ListariWidget(QWidget):
         """Resetează numărul chitanței la 1"""
         try:
             chitante_path = os.path.join(self.database_directory, "CHITANTE.db")
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT ROWID FROM CHITANTE LIMIT 1")
                 row_id = cursor.fetchone()

@@ -72,7 +72,7 @@ class DatabaseIndexer(QThread):
                 continue
 
             try:
-                conn = sqlite3.connect(baza)
+                conn = sqlite3.connect(baza, timeout=30.0)
                 cur = conn.cursor()
 
                 for j, sql in enumerate(comenzi):
@@ -117,7 +117,7 @@ class DatabaseIndexer(QThread):
             self.log_message.emit(f"📊 Analizare: {key}")
 
             try:
-                conn = sqlite3.connect(baza)
+                conn = sqlite3.connect(baza, timeout=30.0)
                 cursor = conn.cursor()
                 cursor.execute("SELECT name, tbl_name, sql FROM sqlite_master WHERE type='index';")
                 indexuri = cursor.fetchall()
@@ -162,7 +162,7 @@ class DatabaseIndexer(QThread):
             self.log_message.emit(f"🧹 Întreținere: {key}")
 
             try:
-                conn = sqlite3.connect(baza)
+                conn = sqlite3.connect(baza, timeout=30.0)
                 cur = conn.cursor()
 
                 # VACUUM
@@ -249,7 +249,7 @@ class DatabaseIndexer(QThread):
     def _generate_generic_indexes(self, db_path):
         """Generează indexuri generice prin analizarea structurii"""
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=30.0)
             cursor = conn.cursor()
 
             # Detectează tabelele și coloanele

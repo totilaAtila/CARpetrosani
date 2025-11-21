@@ -47,7 +47,7 @@ class DividendeWidget(QWidget):
         try:
             conn = None
             try:
-                conn = sqlite3.connect(DB_ACTIVI)
+                conn = sqlite3.connect(DB_ACTIVI, timeout=30.0)
                 cursor = conn.cursor()
                 # Schema oficială ACTIVI conform conversie_widget
                 cursor.execute("""
@@ -83,7 +83,8 @@ class DividendeWidget(QWidget):
                 # self.setEnabled(False)
 
         except Exception as e:
-            QMessageBox.critical(self, "Eroare Generală", f"A apărut o eroare neașteptată la inițializarea BD: {e}")
+            logging.error(f"Eroare inițializare dividende: {e}", exc_info=True)
+            QMessageBox.critical(self, "Eroare Generală", "Nu s-a putut inițializa modulul dividende. Verificați că bazele de date există și sunt accesibile.")
             # self.setEnabled(False)
 
     def _init_ui(self):
@@ -215,12 +216,13 @@ class DividendeWidget(QWidget):
         years = set()
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute("SELECT DISTINCT ANUL FROM DEPCRED")
             years.update(row[0] for row in cursor.fetchall())
         except sqlite3.Error as e:
-            QMessageBox.warning(self, "Eroare BD", f"Eroare la încărcarea anilor: {e}")
+            logging.error(f"Eroare încărcare ani: {e}", exc_info=True)
+            QMessageBox.warning(self, "Eroare", "Nu s-au putut încărca anii disponibili. Verificați că baza de date DEPCRED.db este accesibilă.")
         finally:
             if conn:
                 conn.close()
@@ -266,7 +268,7 @@ class DividendeWidget(QWidget):
         if reply == QMessageBox.Yes:
             conn = None
             try:
-                conn = sqlite3.connect(DB_ACTIVI)
+                conn = sqlite3.connect(DB_ACTIVI, timeout=30.0)
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM ACTIVI")
                 conn.commit()
@@ -480,7 +482,7 @@ class DividendeWidget(QWidget):
         conn_activi = None
 
         try:
-            conn_depcred = sqlite3.connect(DB_DEPCRED)
+            conn_depcred = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor_depcred = conn_depcred.cursor()
 
             # Verificăm existența datelor complete pentru anul selectat (Ian-Dec)
@@ -582,7 +584,7 @@ class DividendeWidget(QWidget):
 
             # --- Pasul 3: Calculează Dividendul (B) pentru fiecare membru ---
             # Golește ACTIVI.db înainte de populare
-            conn_activi = sqlite3.connect(DB_ACTIVI)
+            conn_activi = sqlite3.connect(DB_ACTIVI, timeout=30.0)
             cursor_activi = conn_activi.cursor()
             cursor_activi.execute("DELETE FROM ACTIVI")
             conn_activi.commit()
@@ -708,7 +710,7 @@ class DividendeWidget(QWidget):
         an_viitor = self.an_selectat + 1
         conn_check = None
         try:
-            conn_check = sqlite3.connect(DB_DEPCRED)
+            conn_check = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor_check = conn_check.cursor()
             cursor_check.execute("SELECT COUNT(*) FROM DEPCRED WHERE ANUL = ? AND LUNA = 1", (an_viitor,))
             if cursor_check.fetchone()[0] == 0:
@@ -752,9 +754,9 @@ class DividendeWidget(QWidget):
             conn_depcred = None
             conn_activi = None  # Adaugat conexiune la ACTIVI pentru a marca transferat
             try:
-                conn_depcred = sqlite3.connect(DB_DEPCRED)
+                conn_depcred = sqlite3.connect(DB_DEPCRED, timeout=30.0)
                 # Conectam si la ACTIVI pentru a marca membrii transferati (optional, dar util)
-                conn_activi = sqlite3.connect(DB_ACTIVI)
+                conn_activi = sqlite3.connect(DB_ACTIVI, timeout=30.0)
 
                 cursor_depcred = conn_depcred.cursor()
                 cursor_activi = conn_activi.cursor()

@@ -578,7 +578,7 @@ class ImprumuturiNoiWidget(QWidget):
         Găsește cea mai recentă lună/an disponibilă în DEPCRED.
         """
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("""
                     SELECT MAX(anul * 12 + luna) as ultima_perioada
@@ -611,7 +611,7 @@ class ImprumuturiNoiWidget(QWidget):
             list: Lista de tupluri (nr_fisa, num_pren, impr_deb, impr_sold)
         """
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn_d:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn_d:
                 c_d = conn_d.cursor()
 
                 c_d.execute("""
@@ -631,7 +631,7 @@ class ImprumuturiNoiWidget(QWidget):
 
             # Obținem numele din MEMBRII.db
             imprumuturi_complete = []
-            with sqlite3.connect(DB_MEMBRII) as conn_m:
+            with sqlite3.connect(DB_MEMBRII, timeout=30.0) as conn_m:
                 c_m = conn_m.cursor()
 
                 for nr_fisa, impr_deb, impr_sold in imprumuturi_raw:
@@ -671,7 +671,7 @@ class ImprumuturiNoiWidget(QWidget):
                 luna_sursa = luna_tinta - 1
                 anul_sursa = anul_tinta
 
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
 
                 # Query complex cu JOIN pentru detectare
@@ -700,7 +700,7 @@ class ImprumuturiNoiWidget(QWidget):
 
             # Obținem numele din MEMBRII.db
             membri_complete = []
-            with sqlite3.connect(DB_MEMBRII) as conn_m:
+            with sqlite3.connect(DB_MEMBRII, timeout=30.0) as conn_m:
                 c_m = conn_m.cursor()
 
                 for nr_fisa, impr_deb_sursa, impr_sold_tinta in membri_detectati:

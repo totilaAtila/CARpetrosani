@@ -703,9 +703,9 @@ class GenerareLunaNouaWidget(QWidget):
             # --- Deschidere conexiuni DB ---------------------------------------
             report_progress(f"📂 CITIRE din: {os.path.basename(DB_MEMBRII)}, {os.path.basename(DB_LICHIDATI)}")
             report_progress(f"📝 SCRIERE în: {os.path.basename(DB_DEPCRED)}")
-            conn_m = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True)
-            conn_d = sqlite3.connect(DB_DEPCRED)  # Read-write
-            conn_l = sqlite3.connect(f"file:{DB_LICHIDATI}?mode=ro", uri=True)
+            conn_m = sqlite3.connect(f"file:{DB_MEMBRII}?mode=ro", uri=True, timeout=30.0)
+            conn_d = sqlite3.connect(DB_DEPCRED, timeout=30.0)  # Read-write
+            conn_l = sqlite3.connect(f"file:{DB_LICHIDATI}?mode=ro", uri=True, timeout=30.0)
             cursor_m, cursor_d, cursor_l = conn_m.cursor(), conn_d.cursor(), conn_l.cursor()
             report_progress("✅ Conexiuni DB deschise.", is_detailed=True)
 
@@ -938,7 +938,7 @@ class GenerareLunaNouaWidget(QWidget):
                 return
 
             db_path_abs = os.path.abspath(DB_DEPCRED)
-            conn = sqlite3.connect(f"file:{db_path_abs}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{db_path_abs}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT anul, luna FROM depcred "
@@ -968,7 +968,7 @@ class GenerareLunaNouaWidget(QWidget):
                 self._update_month_selector()
         except sqlite3.Error as e:
             logging.error(f"SQLite Error in _load_current_period: {e}", exc_info=True)
-            afiseaza_eroare(f"Eroare citire perioadă din DEPCRED.db:\n{e}", self)
+            afiseaza_eroare("Nu s-a putut determina ultima lună procesată. Verificați că baza de date DEPCRED.db există și conține date.", self)
         finally:
             if conn:
                 conn.close()
@@ -991,7 +991,7 @@ class GenerareLunaNouaWidget(QWidget):
             return False
         conn = None
         try:
-            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True)
+            conn = sqlite3.connect(f"file:{DB_DEPCRED}?mode=ro", uri=True, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT 1 FROM depcred WHERE luna = ? AND anul = ? LIMIT 1",
@@ -1000,7 +1000,7 @@ class GenerareLunaNouaWidget(QWidget):
             return cursor.fetchone() is not None
         except sqlite3.Error as e:
             logging.error(f"Eroare SQLite la verificare lună {month}-{year}: {e}", exc_info=True)
-            afiseaza_eroare(f"Eroare DB la verificare lună:\n{e}", self)
+            afiseaza_eroare("Nu s-a putut verifica dacă luna există în baza de date. Verificați că DEPCRED.db este accesibilă.", self)
             return False
         finally:
             if conn:

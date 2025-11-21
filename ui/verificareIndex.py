@@ -2,7 +2,7 @@ import sqlite3
 
 def listeaza_indexuri(nume_baza):
     try:
-        conn = sqlite3.connect(nume_baza)
+        conn = sqlite3.connect(nume_baza, timeout=30.0)
         cursor = conn.cursor()
         cursor.execute("SELECT name, tbl_name, sql FROM sqlite_master WHERE type='index'")
         indexuri = cursor.fetchall()
