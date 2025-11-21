@@ -213,9 +213,17 @@ class GenerareLunaNouaWidget(QWidget):
     def _get_inherited_loan_rate(self, cursor_d, nr_fisa, source_period_val):
         """
         Preia rata de împrumut plătită (impr_cred) de membru exact în luna anterioară.
-        Returnează 0.00 dacă nu există înregistrare, există împrumut nou,
-        sau valoarea este invalidă/null.
-        Comportament special pentru împrumut nou după lichidare în aceeași lună.
+
+        BUG #6 FIX: Logică clarificată pentru moștenire rată împrumut:
+
+        Cazuri tratate:
+        1. Nu există date în luna anterioară → rata = 0.00 (membru nou sau reîntors după lichidare)
+        2. Există împrumut nou (impr_deb > 0) → rata = 0.00 (împrumut proaspăt contractat)
+        3. Există date dar fără împrumut nou → moștenește rata din luna anterioară
+
+        Notă: Membrii lichidați sunt excluși complet din generare (vezi BUG #5),
+        deci acest caz nu ar trebui să apară. Totuși, dacă un membru e re-activat
+        (șters din LICHIDATI.db), va fi tratat ca membru nou (caz 1).
         """
         source_year = source_period_val // 100
         source_month = source_period_val % 100
@@ -224,34 +232,44 @@ class GenerareLunaNouaWidget(QWidget):
         try:
             # Extrage datele din luna anterioară
             cursor_d.execute(
-                "SELECT impr_deb, impr_cred FROM depcred WHERE nr_fisa = ? AND anul = ? AND luna = ?",
+                "SELECT impr_deb, impr_cred, impr_sold FROM depcred WHERE nr_fisa = ? AND anul = ? AND luna = ?",
                 (nr_fisa, source_year, source_month)
             )
             result = cursor_d.fetchone()
 
             if not result:
-                logging.warning(f"Nu există date pentru luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}")
-                return rate_paid  # Returnează 0.00 dacă nu există date
+                # CAZ 1: Nu există date în luna anterioară
+                # Poate fi membru nou SAU membru re-activat după lichidare
+                logging.info(
+                    f"BUG #6: Membru fără istoric în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+                    f"Posibil membru nou sau re-activat după lichidare. Rata inițializată la 0.00."
+                )
+                return rate_paid  # Returnează 0.00
 
             # Verificăm dacă există împrumut nou în luna anterioară
-            if result[0] is not None:
-                impr_deb = Decimal(str(result[0] or '0.00'))
-                if impr_deb > Decimal('0.00'):
-                    # Dacă există împrumut nou, nu moștenim rata
-                    logging.info(
-                        f"Împrumut nou ({impr_deb:.2f}) în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
-                        f"Se inițializează rata la 0."
-                    )
-                    return Decimal("0.00")
+            impr_deb = Decimal(str(result[0] or '0.00'))
+            impr_sold_anterior = Decimal(str(result[2] or '0.00'))
 
-            # Cazul normal: preia rata din luna anterioară dacă nu există împrumut nou
+            if impr_deb > Decimal('0.00'):
+                # CAZ 2: Împrumut nou contractat în luna anterioară
+                # Rata se inițializează la 0 pentru că e un împrumut proaspăt
+                logging.info(
+                    f"BUG #6: Împrumut nou ({impr_deb:.2f}) în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+                    f"Rata inițializată la 0.00 (împrumut proaspăt contractat)."
+                )
+                return Decimal("0.00")
+
+            # CAZ 3: Moștenire normală - preia rata din luna anterioară
             if result[1] is not None:
                 try:
                     rate_paid = Decimal(str(result[1] or '0.00')).quantize(Decimal("0.01"), ROUND_HALF_UP)
-                    logging.info(f"Rată moștenită pentru fișa {nr_fisa}: {rate_paid:.2f}")
+                    logging.info(
+                        f"BUG #6: Rată moștenită pentru fișa {nr_fisa}: {rate_paid:.2f} "
+                        f"(sold anterior: {impr_sold_anterior:.2f})"
+                    )
                 except InvalidOperation:
                     logging.warning(
-                        f"Valoare impr_cred ('{result[1]}') invalidă în luna sursă {source_month:02d}-{source_year} "
+                        f"BUG #6: Valoare impr_cred ('{result[1]}') invalidă în luna sursă {source_month:02d}-{source_year} "
                         f"pt fișa {nr_fisa}. Se va folosi 0.00."
                     )
                     rate_paid = Decimal("0.00")
@@ -882,6 +900,51 @@ class GenerareLunaNouaWidget(QWidget):
             report_progress("📝 Salvare date în baza de date...")
             conn_d.commit()
             report_progress("✅ Date salvate cu succes!")
+
+            # BUG #5 FIX: Validare post-generare - verifică că niciun membru lichid nu a fost inclus greșit
+            report_progress("🔍 Validare post-generare: verificare membri lichidați...", is_detailed=True)
+            try:
+                cursor_d.execute("""
+                    SELECT COUNT(*) FROM depcred
+                    WHERE nr_fisa IN (SELECT nr_fisa FROM lichidati)
+                    AND luna = ? AND anul = ?
+                """, (target_month, target_year))
+                membri_lichidati_gresit = cursor_d.fetchone()[0]
+
+                if membri_lichidati_gresit > 0:
+                    # AVERTIZARE CRITICĂ - membri lichidați au fost incluși greșit!
+                    report_progress(f"⚠️ AVERTIZARE: {membri_lichidati_gresit} membri lichidați au fost incluși greșit în luna {target_month:02d}-{target_year}!")
+                    logging.warning(f"BUG #5: {membri_lichidati_gresit} membri lichidați incluși greșit în luna generată")
+
+                    # Afișează lista membrilor lichidați incluși greșit
+                    cursor_d.execute("""
+                        SELECT d.nr_fisa, m.NUM_PREN
+                        FROM depcred d
+                        LEFT JOIN membrii m ON d.nr_fisa = m.nr_fisa
+                        WHERE d.nr_fisa IN (SELECT nr_fisa FROM lichidati)
+                        AND d.luna = ? AND d.anul = ?
+                    """, (target_month, target_year))
+                    membri_gresit = cursor_d.fetchall()
+
+                    for nr_fisa, nume in membri_gresit:
+                        report_progress(f"  - Fișa {nr_fisa}: {nume or 'N/A'} (LICHID AT, NU AR TREBUI INCLUS)", is_detailed=True)
+
+                    # Opțional: șterge automat aceste înregistrări greșite
+                    report_progress("🔧 Curățare automată: șterg înregistrările greșite...", is_detailed=True)
+                    cursor_d.execute("""
+                        DELETE FROM depcred
+                        WHERE nr_fisa IN (SELECT nr_fisa FROM lichidati)
+                        AND luna = ? AND anul = ?
+                    """, (target_month, target_year))
+                    sterse = cursor_d.rowcount
+                    conn_d.commit()
+                    report_progress(f"✅ {sterse} înregistrări greșite șterse pentru membri lichidați")
+                    generati -= sterse  # Ajustează numărul de înregistrări generate
+                else:
+                    report_progress("✅ Validare OK: Niciun membru lichid at inclus greșit", is_detailed=True)
+            except sqlite3.Error as e_valid:
+                report_progress(f"⚠️ Eroare validare post-generare: {e_valid}", is_detailed=True)
+                logging.error("Eroare validare post-generare BUG #5", exc_info=True)
 
             summary = [f" Membri activi procesați: {membri_activi_count}",
                        f" Înregistrări generate: {generati}",
