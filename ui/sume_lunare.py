@@ -2695,6 +2695,43 @@ class SumeLunareWidget(QWidget):
             if conn:
                 conn.close()
 
+    def closeEvent(self, event):
+        """
+        Protecție anti-închidere fereastră când recalcularea rulează în background.
+        Previne corupția datelor dacă utilizatorul închide fereastra în timpul modificărilor DB.
+
+        BUG #3 FIX: Race condition protection pentru thread recalculare
+        """
+        if self._recalculation_running:
+            # Arată mesaj de avertizare - recalcularea e în curs
+            reply = QMessageBox.warning(
+                self,
+                "Recalculare în Desfășurare",
+                "⚠️ Recalcularea soldurilor este în desfășurare.\n\n"
+                "Închiderea ferestrei acum poate cauza inconsistențe în baza de date.\n\n"
+                "Doriți să așteptați finalizarea recalculării?\n"
+                "(Recomand: Așteptați finalizarea)",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes  # Default button
+            )
+
+            if reply == QMessageBox.Yes:
+                # Utilizatorul alege să aștepte - blochează închiderea
+                event.ignore()
+                logging.info("Închidere fereastră blocată - recalculare în curs")
+                # Actualizează mesajul de status pentru utilizator
+                self.lbl_recalc_status.setText("⏳ Așteptați finalizarea recalculării pentru a închide...")
+                self.lbl_recalc_status.setStyleSheet("QLabel { color: #ff6b6b; font-weight: bold; }")
+            else:
+                # Utilizatorul alege să închidă oricum (NU RECOMANDAT)
+                logging.warning("Fereastră închisă forțat în timpul recalculării - risc de inconsistențe!")
+                # Setăm flag-ul ca False pentru a permite cleanup-ul
+                self._recalculation_running = False
+                event.accept()
+        else:
+            # Nu e recalculare în curs - permite închiderea normală
+            event.accept()
+
 
 # --- Bloc de testare ---
 if __name__ == "__main__":
