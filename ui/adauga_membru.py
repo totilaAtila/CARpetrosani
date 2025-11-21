@@ -164,7 +164,7 @@ def finalize_insert(nr_fisa, parent_widget):
     # Dacă am ajuns aici, datele sunt OK la suprafață.
     # 5) Facem INSERT efectiv
     try:
-        conn = sqlite3.connect("MEMBRII.db")
+        conn = sqlite3.connect("MEMBRII.db", timeout=30.0)
         cursor = conn.cursor()
         # Inserăm noul membru
         cursor.execute("""
@@ -181,7 +181,7 @@ def finalize_insert(nr_fisa, parent_widget):
     # Apoi inserăm datele financiare în DEPCRED.db
     # -> pentru fiecare rând
     try:
-        conn_dep = sqlite3.connect("DEPCRED.db")
+        conn_dep = sqlite3.connect("DEPCRED.db", timeout=30.0)
         c_dep = conn_dep.cursor()
         for i in range(nr_linii):
             val_dobanda = dobanda_lines[i].strip()

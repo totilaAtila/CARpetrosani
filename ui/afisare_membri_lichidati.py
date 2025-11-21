@@ -161,7 +161,7 @@ class MembriLichidatiWidget(QWidget):
             progress_dialog.setValue(10)
             QApplication.processEvents()
 
-            conn_dep = sqlite3.connect("DEPCRED.db")
+            conn_dep = sqlite3.connect("DEPCRED.db", timeout=30.0)
             cursor_dep = conn_dep.cursor()
 
             cursor_dep.execute("""
@@ -188,7 +188,7 @@ class MembriLichidatiWidget(QWidget):
             QApplication.processEvents()
 
             # 3. Preluăm toți membrii din MEMBRII.db
-            conn_membri = sqlite3.connect("MEMBRII.db")
+            conn_membri = sqlite3.connect("MEMBRII.db", timeout=30.0)
             cursor_m = conn_membri.cursor()
 
             cursor_m.execute("SELECT nr_fisa, num_pren FROM membrii WHERE nr_fisa IS NOT NULL")
@@ -406,7 +406,7 @@ class MembriLichidatiWidget(QWidget):
                 nr_fisa_int = int(nr_fisa)  # Convertim la int pentru query
                 try:
                     for baza, tabel_db in baze_de_sters:
-                        conn = sqlite3.connect(baza)
+                        conn = sqlite3.connect(baza, timeout=30.0)
                         cursor = conn.cursor()
                         cursor.execute(f"DELETE FROM {tabel_db} WHERE nr_fisa = ?", (nr_fisa_int,))
                         conn.commit()

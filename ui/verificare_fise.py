@@ -570,7 +570,7 @@ class VerificareFiseWidget(QWidget):
             print(f"[ERROR] Database file NOT FOUND at: {os.path.abspath(db_path)}")
             return results
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT NR_FISA, NUM_PREN FROM membrii WHERE NUM_PREN LIKE ? COLLATE NOCASE ORDER BY NUM_PREN",
@@ -713,7 +713,7 @@ class VerificareFiseWidget(QWidget):
 
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT impr_deb FROM depcred WHERE nr_fisa = ? AND luna = ? AND anul = ?",
@@ -848,7 +848,7 @@ class VerificareFiseWidget(QWidget):
             print(f"[ERROR] Database file NOT FOUND at: {os.path.abspath(db_path)}")
             return None
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=30.0)
             cur = conn.cursor()
             cur.execute(
                 "SELECT NR_FISA FROM membrii WHERE NUM_PREN = ? COLLATE NOCASE",
@@ -875,7 +875,7 @@ class VerificareFiseWidget(QWidget):
             print(f"[ERROR] Database file NOT FOUND at: {os.path.abspath(db_path)}")
             return None
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=30.0)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute(
@@ -908,7 +908,7 @@ class VerificareFiseWidget(QWidget):
             print(f"[ERROR] Database file NOT FOUND at: {os.path.abspath(db_path)}")
             return []
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=30.0)
             cur = conn.cursor()
             cur.execute("""
                 SELECT nr_fisa, dobanda, impr_deb, impr_cred, impr_sold,

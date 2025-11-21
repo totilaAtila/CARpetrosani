@@ -691,7 +691,7 @@ class AdaugareMembruWidget(QWidget):
         conn_depcred = None
 
         try:
-            conn_membrii = sqlite3.connect(DB_MEMBRII)
+            conn_membrii = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cursor_membrii = conn_membrii.cursor()
             member_data = self._get_member_data_from_db(nr_fisa)
 
@@ -884,7 +884,7 @@ class AdaugareMembruWidget(QWidget):
 
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT impr_deb FROM depcred WHERE nr_fisa = ? AND luna = ? AND anul = ?",
@@ -906,7 +906,7 @@ class AdaugareMembruWidget(QWidget):
         """Încarcă întregul istoric al membrului cu formatare vizuală avansată."""
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor = conn.cursor()
 
             # Selectăm toate înregistrările pentru membrul respectiv, ordonate cronologic descendent
@@ -1067,7 +1067,7 @@ class AdaugareMembruWidget(QWidget):
 
                 conn_m = None
                 try:
-                    conn_m = sqlite3.connect(DB_MEMBRII)
+                    conn_m = sqlite3.connect(DB_MEMBRII, timeout=30.0)
                     cursor_m = conn_m.cursor()
 
                     # Actualizare DOAR date personale (fără cotizația standard)
@@ -1150,7 +1150,7 @@ class AdaugareMembruWidget(QWidget):
 
                 try:
                     # Salvare în MEMBRII.db
-                    conn_m = sqlite3.connect(DB_MEMBRII)
+                    conn_m = sqlite3.connect(DB_MEMBRII, timeout=30.0)
                     cursor_m = conn_m.cursor()
 
                     # Verificare finală că numărul de fișă nu există

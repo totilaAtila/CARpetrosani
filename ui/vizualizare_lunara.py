@@ -227,7 +227,7 @@ class VizualizareLunaraWidget(QWidget):
             progress.seteaza_text("Se conectează la baza de date...")
             progress.seteaza_valoare(20)
 
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             conn.execute(f"ATTACH DATABASE '{DB_MEMBRII}' AS membrii_db")
             cursor = conn.cursor()
 

@@ -480,7 +480,7 @@ class StatisticiWidget(QWidget):
     def _get_latest_month_year(self):
         """Gaseste cea mai recenta luna/an disponibila in DEPCRED"""
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("""
                     SELECT MAX(anul * 12 + luna) as ultima_perioada
@@ -609,7 +609,7 @@ class StatisticiWidget(QWidget):
     def _count_membri_activi(self):
         """Membri cu orice activitate financiara in luna cea mai recenta"""
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("""
                     SELECT COUNT(DISTINCT nr_fisa)
@@ -630,7 +630,7 @@ class StatisticiWidget(QWidget):
         """
         try:
             # Pas 1: Obtinem toti membrii din MEMBRII.db
-            with sqlite3.connect(DB_MEMBRII) as conn_m:
+            with sqlite3.connect(DB_MEMBRII, timeout=30.0) as conn_m:
                 c_m = conn_m.cursor()
                 c_m.execute("SELECT DISTINCT NR_FISA FROM membrii")
                 toti_membrii = {row[0] for row in c_m.fetchall()}
@@ -688,7 +688,7 @@ class StatisticiWidget(QWidget):
     def _count_membri_cu_imprumuturi(self):
         """Membri cu solduri de imprumuturi > 0 in luna cea mai recenta"""
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("""
                     SELECT COUNT(DISTINCT nr_fisa)
@@ -707,7 +707,7 @@ class StatisticiWidget(QWidget):
         Criteriu: IMPR_DEB > 0 in luna cea mai recenta
         """
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("""
                     SELECT COUNT(DISTINCT nr_fisa)
@@ -740,7 +740,7 @@ class StatisticiWidget(QWidget):
                 luna_sursa = luna_tinta - 1
                 anul_sursa = anul_tinta
 
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
 
                 # Query complex cu JOIN pentru detectare
@@ -776,7 +776,7 @@ class StatisticiWidget(QWidget):
     def _sum_from_depcred(self, column_name):
         """Calculeaza suma unei coloane din DEPCRED pentru luna cea mai recenta"""
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute(f"""
                     SELECT COALESCE(SUM({column_name}), 0)
@@ -792,7 +792,7 @@ class StatisticiWidget(QWidget):
     def _count_cotizatii_neachitate(self):
         """Membri care nu au platit cotizatia in luna cea mai recenta"""
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("""
                     SELECT COUNT(DISTINCT nr_fisa)
@@ -808,7 +808,7 @@ class StatisticiWidget(QWidget):
     def _count_rambursari_neachitate(self):
         """Membri cu rate neachitate in luna cea mai recenta"""
         try:
-            with sqlite3.connect(DB_DEPCRED) as conn:
+            with sqlite3.connect(DB_DEPCRED, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("""
                     SELECT COUNT(DISTINCT nr_fisa)
@@ -824,7 +824,7 @@ class StatisticiWidget(QWidget):
     def _get_chitante_info(self):
         """Obtine informatiile despre chitante"""
         try:
-            with sqlite3.connect(DB_CHITANTE) as conn:
+            with sqlite3.connect(DB_CHITANTE, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute("SELECT STARTCH_PR, STARTCH_AC FROM chitante ORDER BY ROWID DESC LIMIT 1")
                 row = c.fetchone()
@@ -846,7 +846,7 @@ class StatisticiWidget(QWidget):
 
     def _count(self, db_path: str, table: str):
         try:
-            with sqlite3.connect(db_path) as conn:
+            with sqlite3.connect(db_path, timeout=30.0) as conn:
                 c = conn.cursor()
                 c.execute(f"SELECT COUNT(*) FROM {table}")
                 return r[0] if (r := c.fetchone()) else 0
@@ -900,7 +900,7 @@ if __name__ == "__main__":
 
     for db_path, create_sql, sample_data in test_dbs:
         try:
-            with sqlite3.connect(db_path) as conn:
+            with sqlite3.connect(db_path, timeout=30.0) as conn:
                 conn.execute(create_sql)
                 # Insereaza date de test doar daca tabelul este gol
                 table_name = create_sql.split()[5]  # Extrage numele tabelului

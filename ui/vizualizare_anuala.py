@@ -371,7 +371,7 @@ class VizualizareAnualaWidget(QWidget):
 
         try:
             # Connect to database
-            conn_depcred = sqlite3.connect(DB_DEPCRED)
+            conn_depcred = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cur_depcred = conn_depcred.cursor()
 
             progress.seteaza_text(f"Se interoghează baza de date pentru anul {anul}...")
@@ -404,7 +404,7 @@ class VizualizareAnualaWidget(QWidget):
             progress.seteaza_text("Se obțin numele membrilor...")
             progress.seteaza_valoare(60)
 
-            conn_membrii = sqlite3.connect(DB_MEMBRII)
+            conn_membrii = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cur_membrii = conn_membrii.cursor()
             nr_fisa_list = [row[0] for row in depcred_data]
             placeholders = ','.join('?' * len(nr_fisa_list))
@@ -542,7 +542,7 @@ class VizualizareAnualaWidget(QWidget):
             if not is_header:
                 try:
                     # Check if the value is a number and is 0.0
-                    if float(str(val)) == 0.0:
+                    if float(val) == 0.0:
                         # Color red if the annual total is 0.0 for Rate Imprumut and Depunere lunară
                         if idx in [3, 5]:  # Indices for "Rată\nîmprumut" (3) and "Depunere\nlunară" (5)
                             pdf.setFillColor(red)

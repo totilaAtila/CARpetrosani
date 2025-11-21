@@ -444,7 +444,7 @@ class WorkerThread(QThread):
 
             # Conectare SQLite
             sqlite_path = self.work_dir / sqlite_file
-            conn = sqlite3.connect(str(sqlite_path))
+            conn = sqlite3.connect(str(sqlite_path), timeout=30.0)
             cursor = conn.cursor()
 
             # Verifică tabela
