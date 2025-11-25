@@ -105,7 +105,6 @@ CHANGELOG = {
 # Manual Utilizare - Structură Acordeon Modern
 MANUAL_STRUCTURE = {
     "Actualizări": {
-        "icon": "⚡",
         "descriere": "Operațiuni de modificare și actualizare date membri",
         "submeniuri": {
             "Adăugare membru": {
@@ -172,7 +171,6 @@ MANUAL_STRUCTURE = {
         }
     },
     "Vizualizări": {
-        "icon": "📊",
         "descriere": "Rapoarte și analize detaliate situație financiară",
         "submeniuri": {
             "Situație lunară": {
@@ -235,7 +233,6 @@ MANUAL_STRUCTURE = {
         }
     },
     "Listări": {
-        "icon": "📋",
         "descriere": "Generare chitanțe și documente oficiale pentru plăți",
         "functionalitati": [
             "Selectare lună și an pentru listare",
@@ -251,7 +248,6 @@ MANUAL_STRUCTURE = {
         "note": "Sistemul funcționează în modul dual-currency (RON/EUR) automat conform monedei active"
     },
     "Generare lună": {
-        "icon": "🔄",
         "descriere": "Crearea automată lunii noi cu preluare solduri din luna anterioară",
         "functionalitati": [
             "Selectare lună și an nouă",
@@ -266,7 +262,6 @@ MANUAL_STRUCTURE = {
         "note": "Operație complexă - verificați atent datele înainte de confirmare. Suportă suprascriere lună existentă cu confirmare"
     },
     "Salvări": {
-        "icon": "💾",
         "descriere": "Operațiuni backup, restaurare și întreținere baze de date",
         "submeniuri": {
             "Backup Complet": {
@@ -320,7 +315,6 @@ MANUAL_STRUCTURE = {
         }
     },
     "Optimizare baze": {
-        "icon": "⚙️",
         "descriere": "Optimizare și întreținere performanță baze de date",
         "functionalitati": [
             "VACUUM: Recuperare spațiu nefolosit și defragmentare",
@@ -335,7 +329,6 @@ MANUAL_STRUCTURE = {
         "note": "Recomandabil lunar sau după operațiuni majore cu volume mari. Îmbunătățește semnificativ viteza query-urilor și reduce dimensiunea fișierelor"
     },
     "Conversie RON→EUR": {
-        "icon": "💱",
         "descriere": "Aplicarea conversiei definitive RON→EUR pentru tranziția la moneda euro",
         "stari_sistem": {
             "Perioada 1 - Pre-conversie": {
@@ -402,7 +395,6 @@ MANUAL_STRUCTURE = {
         "note": "Operație IREVERSIBILĂ după aplicare. Creați backup complet OBLIGATORIU înainte. Verificați cursul RON/EUR atent - acesta va fi fix pentru toată istoria aplicației"
     },
     "CAR DBF Converter": {
-        "icon": "🔄",
         "descriere": "Utilitar conversie unidirecțională SQLite DB --> DBF pentru compatibilitate sistemul anterior Visual FoxPro",
         "functionalitati": [
             "Conversie SQLite → DBF: pentru export către sisteme vechi Visual FoxPro",
@@ -422,7 +414,6 @@ MANUAL_STRUCTURE = {
         "note": "Modul opțional - disponibil doar dacă fișierul car_dbf_converter_widget.py este prezent. Util pentru migrare date sau integrare cu software legacy existent"
     },
     "Selector temă": {
-        "icon": "🎨",
         "descriere": "Personalizare interfață cu 20 teme profesionale moderne",
         "categorii": {
             "Profesional": [
@@ -460,7 +451,6 @@ MANUAL_STRUCTURE = {
         "note": "Tema se aplică imediat la toate componentele aplicației pentru experiență vizuală unitară"
     },
     "Calcule": {
-        "icon": "🔢",
         "descriere": "Calculator științific separat pentru calcule financiare și matematice",
         "functionalitati": [
             "Fereastră independentă 450x350px",
@@ -485,7 +475,6 @@ MANUAL_STRUCTURE = {
         "note": "Calculator complet independent - nu interferează cu aplicația principală și permite multitasking eficient"
     },
     "Versiune": {
-        "icon": "ℹ️",
         "descriere": "Informații aplicație, istoric versiuni și manual utilizare complet",
         "sectiuni": [
             "Informații versiune curentă cu număr și dată",
@@ -642,16 +631,19 @@ class DespreWidget(QDialog):
         tabs_layout = QHBoxLayout(tabs_frame)
         tabs_layout.setSpacing(10)
 
-        self.btn_manual = self._create_tab_button("Manual Utilizare")
+        self.btn_ghid = self._create_tab_button("Ghid Utilizare")
+        self.btn_manual = self._create_tab_button("Manual Tehnic")
         self.btn_changelog = self._create_tab_button("Istoric Versiuni")
         self.btn_tech = self._create_tab_button("Info Tehnice")
         self.btn_shortcut = self._create_tab_button("Scurtături Tastatură")
 
-        self.btn_manual.clicked.connect(lambda: self._switch_tab(0))
-        self.btn_changelog.clicked.connect(lambda: self._switch_tab(1))
-        self.btn_tech.clicked.connect(lambda: self._switch_tab(2))
-        self.btn_shortcut.clicked.connect(lambda: self._switch_tab(3))
+        self.btn_ghid.clicked.connect(lambda: self._switch_tab(0))
+        self.btn_manual.clicked.connect(lambda: self._switch_tab(1))
+        self.btn_changelog.clicked.connect(lambda: self._switch_tab(2))
+        self.btn_tech.clicked.connect(lambda: self._switch_tab(3))
+        self.btn_shortcut.clicked.connect(lambda: self._switch_tab(4))
 
+        tabs_layout.addWidget(self.btn_ghid)
         tabs_layout.addWidget(self.btn_manual)
         tabs_layout.addWidget(self.btn_changelog)
         tabs_layout.addWidget(self.btn_tech)
@@ -735,6 +727,7 @@ class DespreWidget(QDialog):
     def _switch_tab(self, tab_index):
         """Comută între tab-uri"""
         # Resetează toate butoanele
+        self.btn_ghid.setChecked(False)
         self.btn_manual.setChecked(False)
         self.btn_changelog.setChecked(False)
         self.btn_tech.setChecked(False)
@@ -748,17 +741,274 @@ class DespreWidget(QDialog):
 
         # Încarcă conținutul corespunzător
         if tab_index == 0:
+            self.btn_ghid.setChecked(True)
+            self._load_ghid_utilizare()
+        elif tab_index == 1:
             self.btn_manual.setChecked(True)
             self._load_manual()
-        elif tab_index == 1:
+        elif tab_index == 2:
             self.btn_changelog.setChecked(True)
             self._load_changelog()
-        elif tab_index == 2:
+        elif tab_index == 3:
             self.btn_tech.setChecked(True)
             self._load_tech_info()
-        elif tab_index == 3:
+        elif tab_index == 4:
             self.btn_shortcut.setChecked(True)
             self._load_shortcuts()
+
+    def _load_ghid_utilizare(self):
+        """Încarcă ghidul de utilizare pentru utilizatori non-tehnici"""
+        intro_label = QLabel(
+            "<b>Ghid de Utilizare CAR Petroșani</b><br>"
+            "Ghid complet pentru utilizarea aplicației, destinat utilizatorilor care nu au cunoștințe de programare."
+        )
+        intro_label.setWordWrap(True)
+        intro_label.setStyleSheet("padding: 10px; background: #d4edda; border-radius: 6px; color: #155724;")
+        self.content_layout.addWidget(intro_label)
+
+        # Secțiunea 1: Introducere
+        intro_frame = self._create_section_frame("Despre Aplicație")
+        intro_layout = QVBoxLayout(intro_frame)
+
+        intro_text = QLabel(
+            "CAR Petroșani este o aplicație desktop pentru gestionarea Casei de Ajutor Reciproc Petroșani. "
+            "Aplicația vă permite să gestionați membri, plăți lunare, împrumuturi, dividende și să generați rapoarte și chitanțe PDF."
+        )
+        intro_text.setWordWrap(True)
+        intro_text.setStyleSheet("color: #495057; padding: 8px;")
+        intro_layout.addWidget(intro_text)
+        self.content_layout.addWidget(intro_frame)
+
+        # Secțiunea 2: Operațiuni Comune
+        operations_frame = self._create_section_frame("Operațiuni Comune")
+        operations_layout = QVBoxLayout(operations_frame)
+
+        operations_html = """
+        <p style='margin-bottom: 15px;'><b>1. Adăugare Membru Nou</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Click pe butonul <b>Actualizări</b> din meniul lateral (sau apăsați <b>Alt+A</b>)</li>
+            <li>Selectați <b>Adăugare membru</b></li>
+            <li>Completați datele membrului: nume, prenume, CNP, domiciliu, funcție</li>
+            <li>Sistemul va atribui automat un număr de fișă unic</li>
+            <li>Click pe <b>Salvare</b> pentru a înregistra membrul</li>
+        </ul>
+
+        <p style='margin-bottom: 15px;'><b>2. Introducere Plăți Lunare</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Click pe <b>Actualizări</b> → <b>Sume lunare</b> (sau <b>Alt+A</b>)</li>
+            <li>Căutați membrul folosind numărul de fișă sau numele</li>
+            <li>Introduceți datele pentru luna selectată: rate, cotizații, împrumuturi noi</li>
+            <li>Sistemul va calcula automat soldurile</li>
+            <li>Click pe <b>Salvare</b> pentru a înregistra tranzacția</li>
+        </ul>
+
+        <p style='margin-bottom: 15px;'><b>3. Generare Lună Nouă</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Click pe <b>Generare lună</b> (sau apăsați <b>Alt+G</b>)</li>
+            <li>Selectați luna și anul pentru care doriți să generați înregistrările</li>
+            <li>Sistemul va prelua automat soldurile din luna anterioară</li>
+            <li>Aplicați cotizația standard pentru toți membrii activi</li>
+            <li>Click pe <b>Generează</b> pentru a finaliza operația</li>
+        </ul>
+
+        <p style='margin-bottom: 15px;'><b>4. Generare Chitanțe PDF</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Click pe <b>Listări</b> (sau apăsați <b>Alt+L</b>)</li>
+            <li>Selectați luna și anul pentru care doriți să generați chitanțele</li>
+            <li>Setați numărul chitanței inițial (de exemplu: 1001)</li>
+            <li>Configurați numărul de chitanțe per pagină (implicit: 10)</li>
+            <li>Click pe <b>Preview</b> pentru a verifica datele</li>
+            <li>Click pe <b>Tipărește PDF</b> pentru a genera fișierul PDF</li>
+            <li>PDF-ul va fi salvat automat și deschis pentru vizualizare</li>
+        </ul>
+
+        <p style='margin-bottom: 15px;'><b>5. Vizualizare Rapoarte</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Click pe <b>Vizualizări</b> (sau apăsați <b>Alt+V</b>)</li>
+            <li>Selectați tipul de raport: <b>Situație lunară</b>, <b>Situație trimestrială</b> sau <b>Situație anuală</b></li>
+            <li>Alegeți perioada dorită (lună, trimestru sau an)</li>
+            <li>Sistemul va afișa toate tranzacțiile și soldurile pentru perioada selectată</li>
+            <li>Puteți exporta datele în format Excel prin butonul <b>Export Excel</b></li>
+        </ul>
+        """
+        operations_label = QLabel(operations_html)
+        operations_label.setWordWrap(True)
+        operations_label.setTextFormat(Qt.RichText)
+        operations_label.setStyleSheet("color: #495057;")
+        operations_layout.addWidget(operations_label)
+        self.content_layout.addWidget(operations_frame)
+
+        # Secțiunea 3: Conversie RON - EUR
+        currency_frame = self._create_section_frame("Conversie RON → EUR (Opțional)")
+        currency_layout = QVBoxLayout(currency_frame)
+
+        currency_html = """
+        <p style='margin-bottom: 10px;'>Aplicația suportă conversie completă de la moneda RON la EUR. Această operație este <b>IREVERSIBILĂ</b>
+        și trebuie efectuată cu atenție maximă.</p>
+
+        <p style='margin-bottom: 10px;'><b>Pași pentru conversie:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li><b>Înainte de conversie:</b> Creați un backup complet al bazelor de date (Meniu <b>Salvări</b> → <b>Backup Complet</b>)</li>
+            <li>Apăsați <b>Ctrl+Alt+R</b> sau click pe butonul <b>Conversie RON→EUR</b></li>
+            <li>Verificați cursul de schimb afișat (implicit: 4.9755 RON/EUR)</li>
+            <li>Confirmați operația în dialogul de avertizare</li>
+            <li>Sistemul va crea baze de date noi cu sufix EUR (MEMBRIIEUR.db, DEPCREDEUR.db, etc.)</li>
+            <li>După conversie, puteți comuta între RON și EUR folosind toggle-ul din interfață</li>
+        </ul>
+
+        <p style='margin-bottom: 10px;'><b>După conversie:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li><b>Modul RON:</b> Doar citire (nu puteți modifica datele RON)</li>
+            <li><b>Modul EUR:</b> Citire și scriere completă (toate operațiunile sunt permise)</li>
+            <li>Toggle între RON și EUR se face instant, fără restart aplicație</li>
+        </ul>
+        """
+        currency_label = QLabel(currency_html)
+        currency_label.setWordWrap(True)
+        currency_label.setTextFormat(Qt.RichText)
+        currency_label.setStyleSheet("color: #495057;")
+        currency_layout.addWidget(currency_label)
+
+        # Notă de avertizare
+        warning_label = QLabel(
+            "<b>IMPORTANT:</b> Operația de conversie este IREVERSIBILĂ. "
+            "Asigurați-vă că aveți un backup complet înainte de a continua."
+        )
+        warning_label.setWordWrap(True)
+        warning_label.setStyleSheet("""
+            color: #721c24;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #dc3545;
+            margin-top: 10px;
+        """)
+        currency_layout.addWidget(warning_label)
+        self.content_layout.addWidget(currency_frame)
+
+        # Secțiunea 4: Backup și Salvări
+        backup_frame = self._create_section_frame("Backup și Siguranța Datelor")
+        backup_layout = QVBoxLayout(backup_frame)
+
+        backup_html = """
+        <p style='margin-bottom: 10px;'><b>Crearea unui backup:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Click pe <b>Salvări</b> (sau apăsați <b>Alt+S</b>)</li>
+            <li>Selectați <b>Backup Complet</b></li>
+            <li>Sistemul va crea automat un director cu data curentă în folder-ul <b>backup_db</b></li>
+            <li>Toate bazele de date vor fi copiate în acest director</li>
+            <li>Sistemul va deschide automat folder-ul de backup după finalizare</li>
+        </ul>
+
+        <p style='margin-bottom: 10px;'><b>Restaurarea din backup:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Click pe <b>Salvări</b> → <b>Restaurare</b></li>
+            <li>Selectați folder-ul de backup din care doriți să restaurați</li>
+            <li>Confirmați operația (sistemul va crea automat un backup al datelor curente înainte de restaurare)</li>
+            <li>Datele vor fi restaurate și aplicația va trebui repornită</li>
+        </ul>
+
+        <p style='margin-bottom: 10px;'><b>Recomandări:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Creați backup-uri regulate (recomandat: lunar sau înainte de operațiuni majore)</li>
+            <li>Păstrați backup-urile pe un dispozitiv extern (USB, cloud, etc.)</li>
+            <li>Verificați periodic integritatea bazelor de date (<b>Salvări</b> → <b>Verifică Integritatea</b>)</li>
+        </ul>
+        """
+        backup_label = QLabel(backup_html)
+        backup_label.setWordWrap(True)
+        backup_label.setTextFormat(Qt.RichText)
+        backup_label.setStyleSheet("color: #495057;")
+        backup_layout.addWidget(backup_label)
+        self.content_layout.addWidget(backup_frame)
+
+        # Secțiunea 5: Probleme Comune
+        troubleshooting_frame = self._create_section_frame("Rezolvare Probleme Comune")
+        troubleshooting_layout = QVBoxLayout(troubleshooting_frame)
+
+        troubleshooting_html = """
+        <p style='margin-bottom: 10px;'><b>Aplicația nu pornește:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Verificați că toate bazele de date (MEMBRII.db, DEPCRED.db, etc.) sunt în directorul aplicației</li>
+            <li>Contactați administratorul pentru asistență tehnică</li>
+        </ul>
+
+        <p style='margin-bottom: 10px;'><b>Nu pot modifica date după conversie EUR:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Verificați că sunteți în modul EUR (nu RON)</li>
+            <li>Comutați la EUR folosind toggle-ul din interfață</li>
+            <li>Modul RON este doar pentru vizualizare după conversie</li>
+        </ul>
+
+        <p style='margin-bottom: 10px;'><b>Chitanțele PDF nu au caractere românești (diacritice):</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Verificați că fișierele de font (Arial.ttf, DejaVuSans-Bold.ttf) sunt în folder-ul <b>fonts</b></li>
+            <li>Fonturile trebuie să fie și în directorul rădăcină al aplicației</li>
+            <li>Contactați administratorul dacă problema persistă</li>
+        </ul>
+
+        <p style='margin-bottom: 10px;'><b>Erori la generare lună nouă:</b></p>
+        <ul style='margin: 5px 0 15px 20px;'>
+            <li>Verificați că luna anterioară a fost generată corect</li>
+            <li>Asigurați-vă că toți membrii activi au înregistrări în luna anterioară</li>
+            <li>Folosiți opțiunea <b>Vizualizări</b> → <b>Afișare Membri cu Date Incomplete</b> pentru identificare probleme</li>
+        </ul>
+        """
+        troubleshooting_label = QLabel(troubleshooting_html)
+        troubleshooting_label.setWordWrap(True)
+        troubleshooting_label.setTextFormat(Qt.RichText)
+        troubleshooting_label.setStyleSheet("color: #495057;")
+        troubleshooting_layout.addWidget(troubleshooting_label)
+        self.content_layout.addWidget(troubleshooting_frame)
+
+        # Contact și Suport
+        support_frame = QFrame()
+        support_frame.setStyleSheet("""
+            QFrame {
+                background: #cfe2ff;
+                border: 1px solid #9ec5fe;
+                border-radius: 6px;
+                padding: 12px;
+                margin: 8px 0;
+            }
+        """)
+        support_layout = QVBoxLayout(support_frame)
+
+        support_label = QLabel(
+            "<b>Suport și Documentație:</b><br>"
+            "Pentru întrebări sau probleme, consultați <b>Manual Tehnic</b> sau accesați repository-ul GitHub:<br>"
+            "<a href='https://github.com/totilaAtila/C.A.R._Petrosani' style='color: #0d6efd;'>"
+            "https://github.com/totilaAtila/C.A.R._Petrosani</a>"
+        )
+        support_label.setWordWrap(True)
+        support_label.setTextFormat(Qt.RichText)
+        support_label.setOpenExternalLinks(True)
+        support_label.setStyleSheet("color: #084298; font-size: 10pt;")
+        support_layout.addWidget(support_label)
+        self.content_layout.addWidget(support_frame)
+
+        self.content_layout.addStretch()
+
+    def _create_section_frame(self, title):
+        """Creează un frame pentru o secțiune cu titlu"""
+        frame = QFrame()
+        frame.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                padding: 16px;
+                margin: 8px 0;
+            }
+        """)
+        layout = QVBoxLayout(frame)
+
+        title_label = QLabel(f"<b>{title}</b>")
+        title_label.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        title_label.setStyleSheet("color: #2c3e50; margin-bottom: 8px;")
+        layout.addWidget(title_label)
+
+        return frame
 
     def _load_shortcuts(self):
         """Încarcă lista completă de scurtături tastatură"""
@@ -1044,7 +1294,7 @@ class DespreWidget(QDialog):
         # Creează secțiuni acordeon pentru fiecare meniu
         for menu_name, menu_data in MANUAL_STRUCTURE.items():
             section_widget = self._create_menu_section_widget(menu_name, menu_data)
-            accordion = AccordionSection(f"{menu_data.get('icon', '')} {menu_name}", section_widget)
+            accordion = AccordionSection(menu_name, section_widget)
             self.content_layout.addWidget(accordion)
 
         self.content_layout.addStretch()
@@ -1438,7 +1688,7 @@ class DespreWidget(QDialog):
             <li><b>Limbaj:</b> Python 3.x</li>
             <li><b>Framework UI:</b> PyQt5 pentru interfață grafică modernă</li>
             <li><b>Baze de date:</b> SQLite3 pentru persistență date</li>
-            <li><b>Export:</b> ReportLab pentru generare PDF, openpyxl pentru Excel</li>
+            <li><b>Export:</b> ReportLab pentru generare PDF, xlsxwriter pentru Excel</li>
             <li><b>Arhitectură:</b> MVC cu separare logică business și prezentare</li>
             <li><b>Conversie monedă:</b> Decimal pentru precizie matematică conform UE</li>
         </ul>
@@ -1448,6 +1698,18 @@ class DespreWidget(QDialog):
         tech_label.setTextFormat(Qt.RichText)
         tech_label.setStyleSheet("color: #495057;")
         general_layout.addWidget(tech_label)
+
+        # Link GitHub
+        github_label = QLabel(
+            "<b>Repository GitHub:</b><br>"
+            "<a href='https://github.com/totilaAtila/C.A.R._Petrosani' style='color: #2980b9;'>"
+            "https://github.com/totilaAtila/C.A.R._Petrosani</a>"
+        )
+        github_label.setWordWrap(True)
+        github_label.setTextFormat(Qt.RichText)
+        github_label.setOpenExternalLinks(True)
+        github_label.setStyleSheet("padding: 10px; background: #e8f4f8; border-radius: 6px; color: #495057; margin-top: 10px;")
+        general_layout.addWidget(github_label)
 
         self.content_layout.addWidget(general_frame)
 
