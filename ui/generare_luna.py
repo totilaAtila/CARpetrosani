@@ -241,7 +241,11 @@ class GenerareLunaNouaWidget(QWidget):
                 # CAZ 1: Nu există date în luna anterioară
                 # Poate fi membru nou SAU membru re-activat după lichidare
                 logging.info(
+<<<<<<< HEAD
                     f"ℹ️ INFO:6: Membru fără istoric în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+=======
+                    f"ℹ️ INFO: Membru fără istoric în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+>>>>>>> 224e17c6038a9752881671eecdfe4d626013b768
                     f"Posibil membru nou sau re-activat după lichidare. Rata inițializată la 0.00."
                 )
                 return rate_paid  # Returnează 0.00
@@ -254,7 +258,11 @@ class GenerareLunaNouaWidget(QWidget):
                 # CAZ 2: Împrumut nou contractat în luna anterioară
                 # Rata se inițializează la 0 pentru că e un împrumut proaspăt
                 logging.info(
+<<<<<<< HEAD
                     f"ℹ️ INFO:6: Împrumut nou ({impr_deb:.2f}) în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+=======
+                    f"ℹ️ INFO: Împrumut nou ({impr_deb:.2f}) în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+>>>>>>> 224e17c6038a9752881671eecdfe4d626013b768
                     f"Rata inițializată la 0.00 (împrumut proaspăt contractat)."
                 )
                 return Decimal("0.00")
@@ -263,6 +271,7 @@ class GenerareLunaNouaWidget(QWidget):
             if result[1] is not None:
                 try:
                     rate_paid = Decimal(str(result[1] or '0.00')).quantize(Decimal("0.01"), ROUND_HALF_UP)
+<<<<<<< HEAD
                     logging.info(
                         f"ℹ️ INFO:: Rată moștenită pentru fișa {nr_fisa}: {rate_paid:.2f} "
                         f"(sold anterior: {impr_sold_anterior:.2f})"
@@ -270,6 +279,17 @@ class GenerareLunaNouaWidget(QWidget):
                 except InvalidOperation:
                     logging.warning(
                         f"ℹ️ INFO:: Valoare impr_cred ('{result[1]}') invalidă în luna sursă {source_month:02d}-{source_year} "
+=======
+                    # Afișăm doar rate > 0 pentru a urmări împrumuturi active
+                    if rate_paid > Decimal("0.00"):
+                        logging.info(
+                            f"ℹ️ INFO: Rată moștenită pentru fișa {nr_fisa}: {rate_paid:.2f} "
+                            f"(sold anterior: {impr_sold_anterior:.2f})"
+                        )
+                except InvalidOperation:
+                    logging.warning(
+                        f"⚠️ ATENȚIE: Valoare impr_cred ('{result[1]}') invalidă în luna sursă {source_month:02d}-{source_year} "
+>>>>>>> 224e17c6038a9752881671eecdfe4d626013b768
                         f"pt fișa {nr_fisa}. Se va folosi 0.00."
                     )
                     rate_paid = Decimal("0.00")
@@ -904,12 +924,17 @@ class GenerareLunaNouaWidget(QWidget):
             # BUG #5 FIX: Validare post-generare - verifică că niciun membru lichid nu a fost inclus greșit
             report_progress("🔍 Validare post-generare: verificare membri lichidați...", is_detailed=True)
             try:
-                cursor_d.execute("""
-                    SELECT COUNT(*) FROM depcred
-                    WHERE nr_fisa IN (SELECT nr_fisa FROM lichidati)
-                    AND luna = ? AND anul = ?
-                """, (target_month, target_year))
-                membri_lichidati_gresit = cursor_d.fetchone()[0]
+                # Folosim lichidati_set în loc de subquery SQL pentru a evita eroarea "no such table"
+                if lichidati_set:
+                    placeholders = ','.join('?' * len(lichidati_set))
+                    cursor_d.execute(f"""
+                        SELECT COUNT(*) FROM depcred
+                        WHERE nr_fisa IN ({placeholders})
+                        AND luna = ? AND anul = ?
+                    """, tuple(lichidati_set) + (target_month, target_year))
+                    membri_lichidati_gresit = cursor_d.fetchone()[0]
+                else:
+                    membri_lichidati_gresit = 0
 
                 if membri_lichidati_gresit > 0:
                     # AVERTIZARE CRITICĂ - membri lichidați au fost incluși greșit!
@@ -917,13 +942,13 @@ class GenerareLunaNouaWidget(QWidget):
                     logging.warning(f"BUG #5: {membri_lichidati_gresit} membri lichidați incluși greșit în luna generată")
 
                     # Afișează lista membrilor lichidați incluși greșit
-                    cursor_d.execute("""
+                    cursor_d.execute(f"""
                         SELECT d.nr_fisa, m.NUM_PREN
                         FROM depcred d
                         LEFT JOIN membrii m ON d.nr_fisa = m.nr_fisa
-                        WHERE d.nr_fisa IN (SELECT nr_fisa FROM lichidati)
+                        WHERE d.nr_fisa IN ({placeholders})
                         AND d.luna = ? AND d.anul = ?
-                    """, (target_month, target_year))
+                    """, tuple(lichidati_set) + (target_month, target_year))
                     membri_gresit = cursor_d.fetchall()
 
                     for nr_fisa, nume in membri_gresit:
@@ -931,11 +956,11 @@ class GenerareLunaNouaWidget(QWidget):
 
                     # Opțional: șterge automat aceste înregistrări greșite
                     report_progress("🔧 Curățare automată: șterg înregistrările greșite...", is_detailed=True)
-                    cursor_d.execute("""
+                    cursor_d.execute(f"""
                         DELETE FROM depcred
-                        WHERE nr_fisa IN (SELECT nr_fisa FROM lichidati)
+                        WHERE nr_fisa IN ({placeholders})
                         AND luna = ? AND anul = ?
-                    """, (target_month, target_year))
+                    """, tuple(lichidati_set) + (target_month, target_year))
                     sterse = cursor_d.rowcount
                     conn_d.commit()
                     report_progress(f"✅ {sterse} înregistrări greșite șterse pentru membri lichidați")
