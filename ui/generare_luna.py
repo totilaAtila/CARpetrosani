@@ -240,7 +240,10 @@ class GenerareLunaNouaWidget(QWidget):
             if not result:
                 # CAZ 1: Nu există date în luna anterioară
                 # Poate fi membru nou SAU membru re-activat după lichidare
-                # Nu logăm - rata e 0.00, nu e relevant pentru tracking împrumuturi active
+                logging.info(
+                    f"ℹ️ INFO: Membru fără istoric în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+                    f"Posibil membru nou sau re-activat după lichidare. Rata inițializată la 0.00."
+                )
                 return rate_paid  # Returnează 0.00
 
             # Verificăm dacă există împrumut nou în luna anterioară
@@ -250,7 +253,10 @@ class GenerareLunaNouaWidget(QWidget):
             if impr_deb > Decimal('0.00'):
                 # CAZ 2: Împrumut nou contractat în luna anterioară
                 # Rata se inițializează la 0 pentru că e un împrumut proaspăt
-                # Nu logăm - rata e 0.00, nu e relevant pentru tracking împrumuturi active
+                logging.info(
+                    f"ℹ️ INFO: Împrumut nou ({impr_deb:.2f}) în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
+                    f"Rata inițializată la 0.00 (împrumut proaspăt contractat)."
+                )
                 return Decimal("0.00")
 
             # CAZ 3: Moștenire normală - preia rata din luna anterioară
