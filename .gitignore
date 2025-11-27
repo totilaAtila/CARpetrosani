@@ -49,3 +49,9 @@ Thumbs.db
 *.tmp
 *.bak
 *.backup
+activi.db
+CHITANTE.db
+DEPCRED.db
+INACTIVI.db
+LICHIDATI.db
+MEMBRII.db
