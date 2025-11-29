@@ -241,11 +241,7 @@ class GenerareLunaNouaWidget(QWidget):
                 # CAZ 1: Nu există date în luna anterioară
                 # Poate fi membru nou SAU membru re-activat după lichidare
                 logging.info(
-<<<<<<< HEAD
-                    f"ℹ️ INFO:6: Membru fără istoric în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
-=======
                     f"ℹ️ INFO: Membru fără istoric în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
->>>>>>> 224e17c6038a9752881671eecdfe4d626013b768
                     f"Posibil membru nou sau re-activat după lichidare. Rata inițializată la 0.00."
                 )
                 return rate_paid  # Returnează 0.00
@@ -258,11 +254,7 @@ class GenerareLunaNouaWidget(QWidget):
                 # CAZ 2: Împrumut nou contractat în luna anterioară
                 # Rata se inițializează la 0 pentru că e un împrumut proaspăt
                 logging.info(
-<<<<<<< HEAD
-                    f"ℹ️ INFO:6: Împrumut nou ({impr_deb:.2f}) în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
-=======
                     f"ℹ️ INFO: Împrumut nou ({impr_deb:.2f}) în luna {source_month:02d}-{source_year} pentru fișa {nr_fisa}. "
->>>>>>> 224e17c6038a9752881671eecdfe4d626013b768
                     f"Rata inițializată la 0.00 (împrumut proaspăt contractat)."
                 )
                 return Decimal("0.00")
@@ -271,15 +263,6 @@ class GenerareLunaNouaWidget(QWidget):
             if result[1] is not None:
                 try:
                     rate_paid = Decimal(str(result[1] or '0.00')).quantize(Decimal("0.01"), ROUND_HALF_UP)
-<<<<<<< HEAD
-                    logging.info(
-                        f"ℹ️ INFO:: Rată moștenită pentru fișa {nr_fisa}: {rate_paid:.2f} "
-                        f"(sold anterior: {impr_sold_anterior:.2f})"
-                    )
-                except InvalidOperation:
-                    logging.warning(
-                        f"ℹ️ INFO:: Valoare impr_cred ('{result[1]}') invalidă în luna sursă {source_month:02d}-{source_year} "
-=======
                     # Afișăm doar rate > 0 pentru a urmări împrumuturi active
                     if rate_paid > Decimal("0.00"):
                         logging.info(
@@ -289,7 +272,6 @@ class GenerareLunaNouaWidget(QWidget):
                 except InvalidOperation:
                     logging.warning(
                         f"⚠️ ATENȚIE: Valoare impr_cred ('{result[1]}') invalidă în luna sursă {source_month:02d}-{source_year} "
->>>>>>> 224e17c6038a9752881671eecdfe4d626013b768
                         f"pt fișa {nr_fisa}. Se va folosi 0.00."
                     )
                     rate_paid = Decimal("0.00")
