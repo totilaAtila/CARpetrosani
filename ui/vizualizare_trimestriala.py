@@ -27,9 +27,7 @@ from PyQt5.QtGui import QBrush, QColor
 from reportlab.lib.colors import HexColor, red, black
 
 # Import pentru export Excel
-import openpyxl
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
+import xlsxwriter
 from utils import ProgressDialog
 
 if getattr(sys, 'frozen', False):
@@ -373,7 +371,7 @@ class VizualizareTrimestrialaWidget(QWidget):
             progress.seteaza_text("Se conectează la baza de date...")
             progress.seteaza_valoare(20)
 
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cur = conn.cursor()
             placeholders = ",".join(["?"] * len(luni_trimestru))
 
@@ -423,7 +421,7 @@ class VizualizareTrimestrialaWidget(QWidget):
             progress.seteaza_text("Se obțin numele membrilor...")
             progress.seteaza_valoare(65)
 
-            conn_m = sqlite3.connect(DB_MEMBRII)
+            conn_m = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cur_m = conn_m.cursor()
             entries = []
 
@@ -735,47 +733,130 @@ class VizualizareTrimestrialaWidget(QWidget):
         try:
             progress.seteaza_text("Se creează workbook-ul Excel...")
 
-            # Creează workbook și sheet
-            workbook = openpyxl.Workbook()
-            sheet = workbook.active
-            sheet.title = f"Situatie_{trimestru_text.replace(' ', '_')}"
+            # Creează workbook și worksheet
+            workbook = xlsxwriter.Workbook(file_name)
+            worksheet = workbook.add_worksheet(f"Situatie_{trimestru_text.replace(' ', '_')}")
 
-            # Definire antet
+            # Definire formate
             progress.seteaza_valoare(20)
-            progress.seteaza_text("Se configurează antetul...")
+            progress.seteaza_text("Se configurează formatele...")
 
+            # Format antet
+            header_format = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 11,
+                'bold': True,
+                'bg_color': '#DCE8FF',
+                'align': 'center',
+                'valign': 'vcenter',
+                'text_wrap': True
+            })
+
+            # Formate pentru grupuri alternante cu număr
+            group_format_1 = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#E8F4FF',
+                'align': 'right',
+                'valign': 'vcenter',
+                'num_format': '0.00'
+            })
+
+            group_format_2 = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#FFF5E6',
+                'align': 'right',
+                'valign': 'vcenter',
+                'num_format': '0.00'
+            })
+
+            group_format_1_text = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#E8F4FF',
+                'align': 'right',
+                'valign': 'vcenter'
+            })
+
+            group_format_2_text = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#FFF5E6',
+                'align': 'right',
+                'valign': 'vcenter'
+            })
+
+            group_format_1_left = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#E8F4FF',
+                'align': 'left',
+                'valign': 'vcenter'
+            })
+
+            group_format_2_left = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#FFF5E6',
+                'align': 'left',
+                'valign': 'vcenter'
+            })
+
+            group_format_1_neachitat = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'font_color': 'red',
+                'bg_color': '#E8F4FF',
+                'align': 'right',
+                'valign': 'vcenter'
+            })
+
+            group_format_2_neachitat = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'font_color': 'red',
+                'bg_color': '#FFF5E6',
+                'align': 'right',
+                'valign': 'vcenter'
+            })
+
+            # Format totaluri
+            total_format = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 11,
+                'bold': True,
+                'bg_color': '#F0F0F0',
+                'align': 'right',
+                'valign': 'vcenter',
+                'num_format': '0.00'
+            })
+
+            total_format_label = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 11,
+                'bold': True,
+                'bg_color': '#F0F0F0',
+                'align': 'left',
+                'valign': 'vcenter'
+            })
+
+            # Setează lățimi coloane
+            progress.seteaza_valoare(30)
+            progress.seteaza_text("Se configurează lățimile coloanelor...")
+
+            col_widths = [10, 10, 28, 12, 15, 15, 15, 15, 15, 15]
+            for i, width in enumerate(col_widths):
+                worksheet.set_column(i, i, width)
+
+            # Scrie antetul
             headers = [
                 "Luna-An", "Număr Fișă", "Nume Prenume", "Dobândă", "Rată Împrumut",
                 "Sold Împrumut", "Cotizație", "Retragere FS", "Sold Depunere", "Total de Plată"
             ]
 
-            # Definiții stiluri
-            header_font = Font(name='Arial', size=11, bold=True)
-            header_fill = PatternFill(start_color="DCE8FF", end_color="DCE8FF", fill_type="solid")
-            header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-
-            data_font = Font(name='Arial', size=10)
-            data_alignment = Alignment(horizontal='right', vertical='center')
-            data_alignment_left = Alignment(horizontal='left', vertical='center')
-
-            # Stiluri pentru grupuri alternante
-            group_fill_1 = PatternFill(start_color="E8F4FF", end_color="E8F4FF", fill_type="solid")
-            group_fill_2 = PatternFill(start_color="FFF5E6", end_color="FFF5E6", fill_type="solid")
-
-            # Adaugă antet
-            for col_idx, header_text in enumerate(headers, 1):
-                cell = sheet.cell(row=1, column=col_idx, value=header_text)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = header_alignment
-
-            # Setează lățimi coloane - ajustate pentru Excel
-            progress.seteaza_valoare(30)
-            progress.seteaza_text("Se configurează lățimile coloanelor...")
-
-            col_widths = [10, 10, 28, 12, 15, 15, 15, 15, 15, 15]
-            for i, width in enumerate(col_widths, 1):
-                sheet.column_dimensions[get_column_letter(i)].width = width
+            for col_idx, header_text in enumerate(headers):
+                worksheet.write(0, col_idx, header_text, header_format)
 
             # Adaugă date - sortate după nume și apoi lună
             progress.seteaza_valoare(40)
@@ -788,13 +869,13 @@ class VizualizareTrimestrialaWidget(QWidget):
             prev_nr = None
             total_rows = len(sorted_data)
 
-            for row_idx, data in enumerate(sorted_data, 2):  # Start de la rândul 2 (sub antet)
+            for row_idx, data in enumerate(sorted_data, 1):  # Start de la rândul 1 (după antet la 0)
                 # Actualizare progres
-                current_progress = 40 + int((row_idx - 2) / total_rows * 50)
+                current_progress = 40 + int((row_idx - 1) / total_rows * 50)
                 progress.seteaza_valoare(current_progress)
 
-                if row_idx % 20 == 0:
-                    progress.seteaza_text(f"Se procesează rândul {row_idx - 1} din {total_rows}...")
+                if row_idx % 20 == 1:
+                    progress.seteaza_text(f"Se procesează rândul {row_idx} din {total_rows}...")
 
                 # Alternează grupuri pentru colorare
                 nr_curent = data.get('nr_fisa')
@@ -802,89 +883,53 @@ class VizualizareTrimestrialaWidget(QWidget):
                     current_group = 1 - current_group
                 prev_nr = nr_curent
 
-                # Alege culoarea de fundal pentru grup
-                row_fill = group_fill_1 if current_group % 2 == 0 else group_fill_2
+                # Alege formatele pentru grup
+                fmt_num = group_format_1 if current_group % 2 == 0 else group_format_2
+                fmt_text = group_format_1_text if current_group % 2 == 0 else group_format_2_text
+                fmt_left = group_format_1_left if current_group % 2 == 0 else group_format_2_left
+                fmt_neach = group_format_1_neachitat if current_group % 2 == 0 else group_format_2_neachitat
 
                 # Luna-An
-                cell = sheet.cell(row=row_idx, column=1, value=f"{data['luna']:02d}-{anul}")
-                cell.font = data_font
-                cell.alignment = data_alignment
-                cell.fill = row_fill
+                worksheet.write(row_idx, 0, f"{data['luna']:02d}-{anul}", fmt_text)
 
                 # Număr Fișă
-                cell = sheet.cell(row=row_idx, column=2, value=data.get('nr_fisa', ''))
-                cell.font = data_font
-                cell.alignment = data_alignment
-                cell.fill = row_fill
+                worksheet.write(row_idx, 1, data.get('nr_fisa', ''), fmt_text)
 
                 # Nume Prenume
-                cell = sheet.cell(row=row_idx, column=3, value=data.get('nume', 'Necunoscut'))
-                cell.font = data_font
-                cell.alignment = data_alignment_left  # Aliniere la stânga pentru nume
-                cell.fill = row_fill
+                worksheet.write(row_idx, 2, data.get('nume', 'Necunoscut'), fmt_left)
 
                 # Dobândă
-                cell = sheet.cell(row=row_idx, column=4, value=data.get('dobanda', 0.0))
-                cell.font = data_font
-                cell.alignment = data_alignment
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 3, data.get('dobanda', 0.0), fmt_num)
 
                 # Rată Împrumut (cu tratare NEACHITAT)
                 if data.get('impr_sold', 0.0) > 0 and data.get('impr_cred', 0.0) == 0:
-                    cell = sheet.cell(row=row_idx, column=5, value="NEACHITAT")
-                    cell.font = Font(name='Arial', size=10, color="FF0000")  # Red font
+                    worksheet.write(row_idx, 4, "NEACHITAT", fmt_neach)
                 else:
-                    cell = sheet.cell(row=row_idx, column=5, value=data.get('impr_cred', 0.0))
-                    cell.font = data_font
-                    cell.number_format = '0.00'
-                cell.alignment = data_alignment
-                cell.fill = row_fill
+                    worksheet.write_number(row_idx, 4, data.get('impr_cred', 0.0), fmt_num)
 
                 # Sold Împrumut
-                cell = sheet.cell(row=row_idx, column=6, value=data.get('impr_sold', 0.0))
-                cell.font = data_font
-                cell.alignment = data_alignment
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 5, data.get('impr_sold', 0.0), fmt_num)
 
                 # Cotizație (cu tratare NEACHITAT)
                 if data.get('dep_sold', 0.0) > 0 and data.get('dep_deb', 0.0) == 0:
-                    cell = sheet.cell(row=row_idx, column=7, value="NEACHITAT")
-                    cell.font = Font(name='Arial', size=10, color="FF0000")  # Red font
+                    worksheet.write(row_idx, 6, "NEACHITAT", fmt_neach)
                 else:
-                    cell = sheet.cell(row=row_idx, column=7, value=data.get('dep_deb', 0.0))
-                    cell.font = data_font
-                    cell.number_format = '0.00'
-                cell.alignment = data_alignment
-                cell.fill = row_fill
+                    worksheet.write_number(row_idx, 6, data.get('dep_deb', 0.0), fmt_num)
 
                 # Retragere FS
-                cell = sheet.cell(row=row_idx, column=8, value=data.get('dep_cred', 0.0))
-                cell.font = data_font
-                cell.alignment = data_alignment
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 7, data.get('dep_cred', 0.0), fmt_num)
 
                 # Sold Depunere
-                cell = sheet.cell(row=row_idx, column=9, value=data.get('dep_sold', 0.0))
-                cell.font = data_font
-                cell.alignment = data_alignment
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 8, data.get('dep_sold', 0.0), fmt_num)
 
                 # Total de Plată
-                cell = sheet.cell(row=row_idx, column=10, value=data.get('total_plata', 0.0))
-                cell.font = data_font
-                cell.alignment = data_alignment
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 9, data.get('total_plata', 0.0), fmt_num)
 
             # Adaugă rând de totaluri
             progress.seteaza_valoare(90)
             progress.seteaza_text("Se adaugă totalurile...")
 
-            total_row = len(sorted_data) + 2  # Rândul pentru totaluri
+            total_row = len(sorted_data) + 1  # Rândul pentru totaluri
 
             # Calculează totalurile
             tot_dep = sum(d["dep_deb"] for d in self.date_trimestru)
@@ -895,17 +940,8 @@ class VizualizareTrimestrialaWidget(QWidget):
             tot_retragere_fs = sum(d["dep_cred"] for d in self.date_trimestru)
             tot_total_plata = sum(d["total_plata"] for d in self.date_trimestru)
 
-            # Stil totaluri
-            total_font = Font(name='Arial', size=11, bold=True)
-            total_fill = PatternFill(start_color="F0F0F0", end_color="F0F0F0", fill_type="solid")
-
-            # Scrie label pentru totaluri
-            cell = sheet.cell(row=total_row, column=1, value="TOTAL:")
-            cell.font = total_font
-            cell.fill = total_fill
-
-            # Extinde "TOTAL:" pe 3 coloane
-            sheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=3)
+            # Scrie label pentru totaluri (merge 3 coloane)
+            worksheet.merge_range(total_row, 0, total_row, 2, "TOTAL:", total_format_label)
 
             # Scrie valorile totalurilor
             totals_values = [
@@ -913,21 +949,17 @@ class VizualizareTrimestrialaWidget(QWidget):
                 tot_dep, tot_retragere_fs, tot_dep_sold, tot_total_plata
             ]
 
-            for col_idx, total_value in enumerate(totals_values, 4):
-                cell = sheet.cell(row=total_row, column=col_idx, value=total_value)
-                cell.font = total_font
-                cell.alignment = data_alignment
-                cell.fill = total_fill
-                cell.number_format = '0.00'
+            for col_idx, total_value in enumerate(totals_values, 3):
+                worksheet.write_number(total_row, col_idx, total_value, total_format)
 
             # Fixează antetul pentru scroll
-            sheet.freeze_panes = "A2"
+            worksheet.freeze_panes(1, 0)
 
             # Salvează workbook
             progress.seteaza_valoare(95)
             progress.seteaza_text("Se salvează documentul Excel...")
 
-            workbook.save(file_name)
+            workbook.close()
             progress.seteaza_valoare(100)
 
             QMessageBox.information(self, "Export reușit", f"Fișierul Excel a fost salvat:\n{file_name}")

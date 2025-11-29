@@ -786,7 +786,7 @@ class LichidareMembruWidget(QWidget):
             return
 
         try:
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT num_pren FROM membrii WHERE num_pren LIKE ? COLLATE NOCASE ORDER BY num_pren",
@@ -809,7 +809,7 @@ class LichidareMembruWidget(QWidget):
         results = {}
         conn = None
         try:
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT NR_FISA, NUM_PREN FROM membrii WHERE NUM_PREN LIKE ? COLLATE NOCASE ORDER BY NUM_PREN",
@@ -829,7 +829,7 @@ class LichidareMembruWidget(QWidget):
         conn = None
         nr_fisa_result = None
         try:
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             cur = conn.cursor()
             cur.execute("SELECT NR_FISA FROM membrii WHERE NUM_PREN = ? COLLATE NOCASE", (name,))
             row = cur.fetchone()
@@ -849,7 +849,7 @@ class LichidareMembruWidget(QWidget):
         conn = None
         member_data_result = None
         try:
-            conn = sqlite3.connect(DB_MEMBRII)
+            conn = sqlite3.connect(DB_MEMBRII, timeout=30.0)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("SELECT NR_FISA, NUM_PREN, CALITATEA, DOMICILIUL, DATA_INSCR FROM membrii WHERE NR_FISA = ?",
@@ -871,7 +871,7 @@ class LichidareMembruWidget(QWidget):
         data = []
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cur = conn.cursor()
             cur.execute(
                 "SELECT DOBANDA, IMPR_DEB, IMPR_CRED, IMPR_SOLD, LUNA, ANUL, DEP_DEB, DEP_CRED, DEP_SOLD, PRIMA FROM depcred WHERE NR_FISA = ? ORDER BY ANUL DESC, LUNA DESC",

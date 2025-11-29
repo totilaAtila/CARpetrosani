@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTimer, QLocale
 from PyQt5.QtGui import QBrush, QColor, QCursor, QDoubleValidator
-import openpyxl
+import xlsxwriter
 from utils import afiseaza_warning, afiseaza_eroare, afiseaza_info, afiseaza_intrebare, ProgressDialog
 
 # Determina calea catre resurse (baze de date) la rulare
@@ -47,7 +47,7 @@ class DividendeWidget(QWidget):
         try:
             conn = None
             try:
-                conn = sqlite3.connect(DB_ACTIVI)
+                conn = sqlite3.connect(DB_ACTIVI, timeout=30.0)
                 cursor = conn.cursor()
                 # Schema oficială ACTIVI conform conversie_widget
                 cursor.execute("""
@@ -83,7 +83,8 @@ class DividendeWidget(QWidget):
                 # self.setEnabled(False)
 
         except Exception as e:
-            QMessageBox.critical(self, "Eroare Generală", f"A apărut o eroare neașteptată la inițializarea BD: {e}")
+            logging.error(f"Eroare inițializare dividende: {e}", exc_info=True)
+            QMessageBox.critical(self, "Eroare Generală", "Nu s-a putut inițializa modulul dividende. Verificați că bazele de date există și sunt accesibile.")
             # self.setEnabled(False)
 
     def _init_ui(self):
@@ -215,12 +216,13 @@ class DividendeWidget(QWidget):
         years = set()
         conn = None
         try:
-            conn = sqlite3.connect(DB_DEPCRED)
+            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor = conn.cursor()
             cursor.execute("SELECT DISTINCT ANUL FROM DEPCRED")
             years.update(row[0] for row in cursor.fetchall())
         except sqlite3.Error as e:
-            QMessageBox.warning(self, "Eroare BD", f"Eroare la încărcarea anilor: {e}")
+            logging.error(f"Eroare încărcare ani: {e}", exc_info=True)
+            QMessageBox.warning(self, "Eroare", "Nu s-au putut încărca anii disponibili. Verificați că baza de date DEPCRED.db este accesibilă.")
         finally:
             if conn:
                 conn.close()
@@ -266,7 +268,7 @@ class DividendeWidget(QWidget):
         if reply == QMessageBox.Yes:
             conn = None
             try:
-                conn = sqlite3.connect(DB_ACTIVI)
+                conn = sqlite3.connect(DB_ACTIVI, timeout=30.0)
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM ACTIVI")
                 conn.commit()
@@ -480,7 +482,7 @@ class DividendeWidget(QWidget):
         conn_activi = None
 
         try:
-            conn_depcred = sqlite3.connect(DB_DEPCRED)
+            conn_depcred = sqlite3.connect(DB_DEPCRED, timeout=30.0)
             cursor_depcred = conn_depcred.cursor()
 
             # Verificăm existența datelor complete pentru anul selectat (Ian-Dec)
@@ -582,7 +584,7 @@ class DividendeWidget(QWidget):
 
             # --- Pasul 3: Calculează Dividendul (B) pentru fiecare membru ---
             # Golește ACTIVI.db înainte de populare
-            conn_activi = sqlite3.connect(DB_ACTIVI)
+            conn_activi = sqlite3.connect(DB_ACTIVI, timeout=30.0)
             cursor_activi = conn_activi.cursor()
             cursor_activi.execute("DELETE FROM ACTIVI")
             conn_activi.commit()
@@ -704,6 +706,31 @@ class DividendeWidget(QWidget):
                                 "Nu există membri cu dividend calculat pentru transfer.")
             return
 
+        # Validare critică: verificăm că Ianuarie anul viitor există înainte de transfer
+        an_viitor = self.an_selectat + 1
+        conn_check = None
+        try:
+            conn_check = sqlite3.connect(DB_DEPCRED, timeout=30.0)
+            cursor_check = conn_check.cursor()
+            cursor_check.execute("SELECT COUNT(*) FROM DEPCRED WHERE ANUL = ? AND LUNA = 1", (an_viitor,))
+            if cursor_check.fetchone()[0] == 0:
+                QMessageBox.critical(
+                    self, "Eroare - Lipsă Ianuarie",
+                    f"Luna Ianuarie {an_viitor} nu există în baza de date!\n\n"
+                    f"Vă rugăm să generați mai întâi luna Ianuarie {an_viitor} folosind "
+                    f"funcția 'Generare Lună Nouă' înainte de a transfera dividendele."
+                )
+                return
+        except sqlite3.Error as e:
+            QMessageBox.critical(
+                self, "Eroare Bază Date",
+                f"Eroare la verificarea existenței lunii Ianuarie {an_viitor}:\n{e}"
+            )
+            return
+        finally:
+            if conn_check:
+                conn_check.close()
+
         reply = QMessageBox.question(
             self, "Confirmare Transfer",
             f"Sunteți sigur că doriți să transferați dividendul calculat "
@@ -727,9 +754,9 @@ class DividendeWidget(QWidget):
             conn_depcred = None
             conn_activi = None  # Adaugat conexiune la ACTIVI pentru a marca transferat
             try:
-                conn_depcred = sqlite3.connect(DB_DEPCRED)
+                conn_depcred = sqlite3.connect(DB_DEPCRED, timeout=30.0)
                 # Conectam si la ACTIVI pentru a marca membrii transferati (optional, dar util)
-                conn_activi = sqlite3.connect(DB_ACTIVI)
+                conn_activi = sqlite3.connect(DB_ACTIVI, timeout=30.0)
 
                 cursor_depcred = conn_depcred.cursor()
                 cursor_activi = conn_activi.cursor()
@@ -783,7 +810,7 @@ class DividendeWidget(QWidget):
                                  SET DEP_DEB = ?, -- Adăugăm dividendul la suma existentă pe coloana DEP_DEB
                                      DEP_SOLD = ? -- Setăm noul sold calculat
                                  WHERE NR_FISA = ? AND ANUL = ? AND LUNA = 1
-                             """, (float(nou_dep_deb), float(nou_dep_sold), nr_fisa, an_viitor))
+                             """, (str(nou_dep_deb), str(nou_dep_sold), nr_fisa, an_viitor))
 
                             count_updated += 1
 
@@ -894,32 +921,96 @@ class DividendeWidget(QWidget):
         )
 
         try:
-            # Crearea workbook și foaie
-            workbook = openpyxl.Workbook()
-            sheet = workbook.active
-            sheet.title = f"Dividende {self.an_selectat}"
-
-            # Definirea stilurilor pentru Excel
-            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-            from openpyxl.utils import get_column_letter
+            # Crearea workbook și worksheet
+            workbook = xlsxwriter.Workbook(file_path)
+            worksheet = workbook.add_worksheet(f"Dividende {self.an_selectat}")
 
             # Actualizăm bara de progres
-            progress_dialog.seteaza_text("Se definesc stilurile Excel...")
+            progress_dialog.seteaza_text("Se definesc formatele Excel...")
             progress_dialog.seteaza_valoare(10)
 
-            # Stiluri pentru antet
-            header_font = Font(name='Arial', size=11, bold=True)
-            header_fill = PatternFill(start_color="DCE8FF", end_color="DCE8FF", fill_type="solid")
-            header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            # Definirea formatelor pentru Excel
+            # Format antet
+            header_format = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 11,
+                'bold': True,
+                'bg_color': '#DCE8FF',
+                'align': 'center',
+                'valign': 'vcenter',
+                'text_wrap': True
+            })
 
-            # Stiluri pentru date
-            data_font = Font(name='Arial', size=10)
-            data_alignment_right = Alignment(horizontal='right', vertical='center')
-            data_alignment_left = Alignment(horizontal='left', vertical='center')
+            # Formate pentru rânduri alternante
+            row_format_1_num = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#E8F4FF',
+                'align': 'right',
+                'valign': 'vcenter',
+                'num_format': '0.00'
+            })
 
-            # Stiluri pentru rânduri alternante
-            row_fill_1 = PatternFill(start_color="E8F4FF", end_color="E8F4FF", fill_type="solid")
-            row_fill_2 = PatternFill(start_color="FFF5E6", end_color="FFF5E6", fill_type="solid")
+            row_format_2_num = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#FFF5E6',
+                'align': 'right',
+                'valign': 'vcenter',
+                'num_format': '0.00'
+            })
+
+            row_format_1_text = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#E8F4FF',
+                'align': 'right',
+                'valign': 'vcenter'
+            })
+
+            row_format_2_text = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#FFF5E6',
+                'align': 'right',
+                'valign': 'vcenter'
+            })
+
+            row_format_1_left = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#E8F4FF',
+                'align': 'left',
+                'valign': 'vcenter'
+            })
+
+            row_format_2_left = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 10,
+                'bg_color': '#FFF5E6',
+                'align': 'left',
+                'valign': 'vcenter'
+            })
+
+            # Format totaluri
+            total_format = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 11,
+                'bold': True,
+                'bg_color': '#F0F0F0',
+                'align': 'right',
+                'valign': 'vcenter',
+                'num_format': '0.00'
+            })
+
+            total_format_label = workbook.add_format({
+                'font_name': 'Arial',
+                'font_size': 11,
+                'bold': True,
+                'bg_color': '#F0F0F0',
+                'align': 'left',
+                'valign': 'vcenter'
+            })
 
             # Actualizăm bara de progres
             progress_dialog.seteaza_text("Se scriu antetele...")
@@ -929,16 +1020,13 @@ class DividendeWidget(QWidget):
             headers = [self.tabel_dividende.horizontalHeaderItem(i).text() for i in
                        range(self.tabel_dividende.columnCount())]
 
-            for col_idx, header_text in enumerate(headers, 1):
-                cell = sheet.cell(row=1, column=col_idx, value=header_text)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = header_alignment
+            for col_idx, header_text in enumerate(headers):
+                worksheet.write(0, col_idx, header_text, header_format)
 
             # Setează lățimi optimizate pentru coloane
             col_widths = [10, 30, 15, 25, 20]  # Lățimi inițiale pentru coloane
-            for i, width in enumerate(col_widths, 1):
-                sheet.column_dimensions[get_column_letter(i)].width = width
+            for i, width in enumerate(col_widths):
+                worksheet.set_column(i, i, width)
 
             # Actualizăm bara de progres pentru scrierea datelor
             progress_dialog.seteaza_text("Se scriu datele în Excel...")
@@ -952,7 +1040,7 @@ class DividendeWidget(QWidget):
             current_group = 0
             prev_nr_fisa = None
 
-            for row_idx, membru_data in enumerate(self.membri_cu_dividend, 2):  # Începe de la rândul 2 (sub antet)
+            for row_idx, membru_data in enumerate(self.membri_cu_dividend, 1):  # Începe de la rândul 1 (după antet la 0)
                 # Verificăm dacă utilizatorul a anulat operația
                 if progress_dialog.este_anulat():
                     progress_dialog.inchide()
@@ -960,9 +1048,9 @@ class DividendeWidget(QWidget):
                     return
 
                 # Calculăm procentul de progres și actualizăm bara
-                progress_percent = 20 + int((row_idx - 2) / total_membri * 70)  # 20% - 90%
+                progress_percent = 20 + int((row_idx - 1) / total_membri * 70)  # 20% - 90%
                 progress_dialog.seteaza_valoare(progress_percent)
-                progress_dialog.seteaza_text(f"Se scriu datele: {row_idx - 1}/{total_membri} membri...")
+                progress_dialog.seteaza_text(f"Se scriu datele: {row_idx}/{total_membri} membri...")
 
                 # Alternarea culorilor pentru grupuri de numere de fișă
                 nr_fisa = membru_data.get("nr_fisa", "")
@@ -970,42 +1058,25 @@ class DividendeWidget(QWidget):
                     current_group = 1 - current_group  # Alternează grupul
                 prev_nr_fisa = nr_fisa
 
-                # Alege culoarea pentru rând
-                row_fill = row_fill_1 if current_group % 2 == 0 else row_fill_2
+                # Alege formatele pentru rând
+                fmt_num = row_format_1_num if current_group % 2 == 0 else row_format_2_num
+                fmt_text = row_format_1_text if current_group % 2 == 0 else row_format_2_text
+                fmt_left = row_format_1_left if current_group % 2 == 0 else row_format_2_left
 
                 # Nr. fișă
-                cell = sheet.cell(row=row_idx, column=1, value=nr_fisa)
-                cell.font = data_font
-                cell.alignment = data_alignment_right
-                cell.fill = row_fill
+                worksheet.write(row_idx, 0, nr_fisa, fmt_text)
 
                 # Nume prenume
-                cell = sheet.cell(row=row_idx, column=2, value=membru_data.get("num_pren", ""))
-                cell.font = data_font
-                cell.alignment = data_alignment_left  # Aliniere la stânga pentru nume
-                cell.fill = row_fill
+                worksheet.write(row_idx, 1, membru_data.get("num_pren", ""), fmt_left)
 
                 # Sold Decembrie
-                cell = sheet.cell(row=row_idx, column=3, value=float(membru_data.get("dep_sold_dec", Decimal(0.0))))
-                cell.font = data_font
-                cell.alignment = data_alignment_right
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 2, float(membru_data.get("dep_sold_dec", Decimal(0.0))), fmt_num)
 
                 # Suma Soldurilor Lunare
-                cell = sheet.cell(row=row_idx, column=4,
-                                  value=float(membru_data.get("suma_solduri_lunare", Decimal(0.0))))
-                cell.font = data_font
-                cell.alignment = data_alignment_right
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 3, float(membru_data.get("suma_solduri_lunare", Decimal(0.0))), fmt_num)
 
                 # Dividend Calculat
-                cell = sheet.cell(row=row_idx, column=5, value=float(membru_data.get("dividend", Decimal(0.0))))
-                cell.font = data_font
-                cell.alignment = data_alignment_right
-                cell.fill = row_fill
-                cell.number_format = '0.00'
+                worksheet.write_number(row_idx, 4, float(membru_data.get("dividend", Decimal(0.0))), fmt_num)
 
             # Actualizăm bara de progres
             progress_dialog.seteaza_text("Se calculează totalurile...")
@@ -1013,7 +1084,7 @@ class DividendeWidget(QWidget):
 
             # Adaugă un rând pentru totaluri
             if self.membri_cu_dividend:
-                total_row = len(self.membri_cu_dividend) + 2  # Rândul pentru totaluri
+                total_row = len(self.membri_cu_dividend) + 1  # Rândul pentru totaluri
 
                 # Calculează totalurile
                 total_sold_dec = sum(float(d.get("dep_sold_dec", Decimal(0.0))) for d in self.membri_cu_dividend)
@@ -1021,35 +1092,23 @@ class DividendeWidget(QWidget):
                     float(d.get("suma_solduri_lunare", Decimal(0.0))) for d in self.membri_cu_dividend)
                 total_dividend = sum(float(d.get("dividend", Decimal(0.0))) for d in self.membri_cu_dividend)
 
-                # Stilul pentru totaluri
-                total_font = Font(name='Arial', size=11, bold=True)
-                total_fill = PatternFill(start_color="F0F0F0", end_color="F0F0F0", fill_type="solid")
-
-                # Scrie eticheta pentru totaluri
-                cell = sheet.cell(row=total_row, column=1, value="TOTAL:")
-                cell.font = total_font
-                cell.fill = total_fill
-
-                # Îmbină celulele pentru etichetă
-                sheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=2)
+                # Scrie eticheta pentru totaluri (merge 2 coloane)
+                worksheet.merge_range(total_row, 0, total_row, 1, "TOTAL:", total_format_label)
 
                 # Scrie valorile totalurilor
-                for col_idx, total_value in enumerate([total_sold_dec, total_suma_solduri, total_dividend], 3):
-                    cell = sheet.cell(row=total_row, column=col_idx, value=total_value)
-                    cell.font = total_font
-                    cell.alignment = data_alignment_right
-                    cell.fill = total_fill
-                    cell.number_format = '0.00'
+                worksheet.write_number(total_row, 2, total_sold_dec, total_format)
+                worksheet.write_number(total_row, 3, total_suma_solduri, total_format)
+                worksheet.write_number(total_row, 4, total_dividend, total_format)
 
             # Fixează antetul pentru scroll
-            sheet.freeze_panes = "A2"
+            worksheet.freeze_panes(1, 0)
 
             # Actualizăm bara de progres
             progress_dialog.seteaza_text("Se salvează fișierul Excel...")
             progress_dialog.seteaza_valoare(95)
 
             # Salvează workbook-ul
-            workbook.save(file_path)
+            workbook.close()
 
             # Finalizăm bara de progres
             progress_dialog.seteaza_valoare(100)

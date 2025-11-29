@@ -108,7 +108,7 @@ class ActualizareMembruWidget(QWidget):
     def verifica_numar_fisa(self):
         """Verifică dacă numărul de fișă există deja în baza de date și preia datele asociate."""
         nr_fisa = self.nr_fisa.text()
-        conn = sqlite3.connect("membrii.db")
+        conn = sqlite3.connect("membrii.db", timeout=30.0)
         cursor = conn.cursor()
         cursor.execute("SELECT num_pren, domiciliul, calitatea, data_inscr FROM membrii WHERE nr_fisa=?", (nr_fisa,))
         row = cursor.fetchone()
@@ -129,7 +129,7 @@ class ActualizareMembruWidget(QWidget):
 
     def adauga_membru(self):
         """Adaugă un membru nou în baza de date."""
-        conn = sqlite3.connect("membrii.db")
+        conn = sqlite3.connect("membrii.db", timeout=30.0)
         cursor = conn.cursor()
         try:
             cursor.execute("""
@@ -144,7 +144,7 @@ class ActualizareMembruWidget(QWidget):
 
     def modifica_membru(self):
         """Modifică datele unui membru existent."""
-        conn = sqlite3.connect("membrii.db")
+        conn = sqlite3.connect("membrii.db", timeout=30.0)
         cursor = conn.cursor()
         try:
             cursor.execute("""

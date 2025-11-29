@@ -1,0 +1,25 @@
+# Dependențe pentru dezvoltare și testare
+# Instalare: pip install -r requirements-dev.txt
+
+# Framework testare
+pytest>=7.4.0
+pytest-cov>=4.1.0           # Coverage reports
+pytest-mock>=3.11.1         # Mock fixtures
+pytest-qt>=4.2.0            # PyQt5 testing support
+pytest-timeout>=2.1.0       # Timeout pentru teste lungi
+
+# Testare și debugging
+coverage>=7.3.0             # Code coverage
+hypothesis>=6.82.0          # Property-based testing
+
+# Linting și formatare
+flake8>=6.1.0              # Linting
+black>=23.7.0              # Code formatting
+isort>=5.12.0              # Import sorting
+pylint>=2.17.5             # Advanced linting
+
+# Type checking
+mypy>=1.5.0                # Static type checking
+
+# Dependențe principale (pentru compatibilitate)
+-r requirements.txt

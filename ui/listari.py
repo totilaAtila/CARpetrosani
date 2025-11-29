@@ -151,7 +151,7 @@ class TimerBasedPDFGenerator:
             depcred_path = os.path.join(self.database_dir, "DEPCRED.db")
             membrii_path = os.path.join(self.database_dir, "MEMBRII.db")
 
-            with sqlite3.connect(depcred_path) as conn1, sqlite3.connect(membrii_path) as conn2:
+            with sqlite3.connect(depcred_path, timeout=30.0) as conn1, sqlite3.connect(membrii_path, timeout=30.0) as conn2:
                 cursor1 = conn1.cursor()
                 cursor2 = conn2.cursor()
 
@@ -208,15 +208,33 @@ class TimerBasedPDFGenerator:
             self._handle_error(f"Eroare inițializare PDF: {e}")
 
     def _step_generate_chitante(self):
-        """Pas 4: Generează chitanțele - câte 5 pe batch pentru a nu îngheta UI"""
+        """
+        Pas 4: Generează chitanțele - optimizat pentru seturi mari (800+ membri).
+        BUG #4 FIX: Batch size adaptat pentru performanță îmbunătățită cu feedback clar.
+        """
         if self.current_index >= len(self.chitante_data):
             self.current_state = "totals"
             self.process_timer.start(50)
             return
 
         try:
-            # Procesează până la 5 chitanțe pe batch
-            batch_size = min(5, len(self.chitante_data) - self.current_index)
+            # ÎMBUNĂTĂȚIRE BUG #4: Batch size adaptat pentru seturi mari
+            # Pentru <100 chitanțe: batch de 5 (foarte responsive)
+            # Pentru 100-500 chitanțe: batch de 10 (balans bun)
+            # Pentru >500 chitanțe: batch de 20 (performanță maximă fără freeze UI)
+            total_chitante = len(self.chitante_data)
+            if total_chitante < 100:
+                batch_size = 5
+                delay_ms = 20
+            elif total_chitante < 500:
+                batch_size = 10
+                delay_ms = 15
+            else:
+                # Pentru 800+ chitanțe: batch mai mare pentru viteză
+                batch_size = 20
+                delay_ms = 10
+
+            batch_size = min(batch_size, total_chitante - self.current_index)
             page_height = A4[1]
 
             for i in range(batch_size):
@@ -234,12 +252,13 @@ class TimerBasedPDFGenerator:
 
             self.current_index += batch_size
 
-            # Actualizează progresul
-            progress = 30 + int((self.current_index / len(self.chitante_data)) * 50)
-            self._update_progress(progress, f"Procesare chitanță {self.current_index}/{len(self.chitante_data)}...")
+            # ÎMBUNĂTĂȚIRE BUG #4: Mesaj de progres mai informativ cu procent explicit
+            progress = 30 + int((self.current_index / total_chitante) * 50)
+            procent = int((self.current_index / total_chitante) * 100)
+            self._update_progress(progress, f"Generare PDF: {self.current_index}/{total_chitante} ({procent}%)")
 
-            # Continuă cu următorul batch după 20ms
-            self.process_timer.start(20)
+            # Continuă cu următorul batch
+            self.process_timer.start(delay_ms)
 
         except Exception as e:
             self._handle_error(f"Eroare generare chitanțe: {e}")
@@ -409,7 +428,7 @@ class TimerBasedPDFGenerator:
         """Versiune cu semantică clară pentru STARTCH_PR"""
         try:
             chitante_path = os.path.join(self.database_dir, "CHITANTE.db")
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT ROWID, STARTCH_AC FROM CHITANTE LIMIT 1")
                 row = cursor.fetchone()
@@ -955,7 +974,7 @@ class ListariWidget(QWidget):
                 self.input_nr_chitanta.setText("1")
                 return
 
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT STARTCH_AC FROM CHITANTE LIMIT 1')
                 result = cursor.fetchone()
@@ -991,7 +1010,7 @@ class ListariWidget(QWidget):
                 self.input_nr_chitante_tiparit.setText("0")
                 return
 
-            with sqlite3.connect(depcred_path) as conn:
+            with sqlite3.connect(depcred_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT COUNT(*) FROM DEPCRED WHERE LUNA=? AND ANUL=?', (luna, an))
                 result = cursor.fetchone()
@@ -1405,7 +1424,7 @@ class ListariWidget(QWidget):
         """Resetează numărul chitanței și continuă"""
         try:
             chitante_path = os.path.join(self.database_directory, "CHITANTE.db")
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT ROWID FROM CHITANTE LIMIT 1")
                 row_id = cursor.fetchone()
@@ -1563,7 +1582,7 @@ class ListariWidget(QWidget):
         """Resetează numărul chitanței la 1"""
         try:
             chitante_path = os.path.join(self.database_directory, "CHITANTE.db")
-            with sqlite3.connect(chitante_path) as conn:
+            with sqlite3.connect(chitante_path, timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT ROWID FROM CHITANTE LIMIT 1")
                 row_id = cursor.fetchone()

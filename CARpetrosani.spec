@@ -17,9 +17,7 @@ a = Analysis(
         ('DejaVuSans-Bold.ttf', '.')
     ],
     hiddenimports=[
-        'openpyxl',
-        'xlsxwriter', 
-        'et_xmlfile',
+        'xlsxwriter',
         'reportlab',
         'reportlab.lib',
         'reportlab.pdfgen',

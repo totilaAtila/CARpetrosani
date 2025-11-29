@@ -426,7 +426,8 @@ class TranzactieDialog(QDialog):
                 )
 
         except (ValueError, InvalidOperation) as e:
-            afiseaza_eroare(f"Eroare la calcul: {str(e)}", self)
+            logging.error(f"Eroare calcul: {e}", exc_info=True)
+            afiseaza_eroare("Valoare invalidă introdusă. Verificați că toate câmpurile conțin numere valide.", self)
 
     def set_data_for_edit(self, luna, anul, data_existenta):
         """ Pre-populează dialogul pentru editare. """
@@ -632,7 +633,7 @@ class TranzactieDialog(QDialog):
             logging.error(f"Eroare DB la actualizare depcred: {e}", exc_info=True)
             if conn:
                 conn.rollback()
-            afiseaza_eroare(f"Eroare la actualizarea datelor:\n{e}", parent=self)
+            afiseaza_eroare("Nu s-au putut salva modificările. Verificați că baza de date nu este ocupată de altă aplicație.", parent=self)
         finally:
             if conn:
                 conn.close()
@@ -1776,7 +1777,7 @@ class SumeLunareWidget(QWidget):
 
             except Exception as e:
                 logging.error(f"Eroare calcul dobândă {self._loaded_nr_fisa}: {e}", exc_info=True)
-                afiseaza_eroare(f"Eroare calcul dobândă:\n{e}", parent=self)
+                afiseaza_eroare("Nu s-a putut calcula dobânda. Verificați că există date complete pentru membrul selectat.", parent=self)
 
     def _calculeaza_dobanda_la_zi(self, nr_fisa, end_luna, end_anul):
         """ Calculează dobânda acumulată pentru un împrumut. """
@@ -1922,8 +1923,8 @@ class SumeLunareWidget(QWidget):
             logging.info(f"Completer actualizat: {len(membri_list)} membri.")
 
         except sqlite3.Error as e:
-            afiseaza_eroare(f"Eroare încărcare membri:\n{e}", parent=self)
             logging.error(f"Eroare DB completer: {e}", exc_info=True)
+            afiseaza_eroare("Nu s-au putut încărca datele membrilor. Verificați că baza de date există și este accesibilă.", parent=self)
         except Exception as e_gen:
             afiseaza_eroare(f"Eroare generală completer:\n{e_gen}", parent=self)
             logging.error(f"Eroare generală completer: {e_gen}", exc_info=True)
@@ -2058,7 +2059,7 @@ class SumeLunareWidget(QWidget):
 
         except Exception as e:
             logging.error(f"Eroare _load_member_data: {e}", exc_info=True)
-            afiseaza_eroare(f"Eroare încărcare date:\n{type(e).__name__}: {str(e)}", parent=self)
+            afiseaza_eroare("Nu s-au putut încărca datele membrului. Verificați că numărul de fișă este valid și există în baza de date.", parent=self)
             self.reset_form()
         finally:
             self._verificare_activa = False
@@ -2689,10 +2690,47 @@ class SumeLunareWidget(QWidget):
             logging.error(f"Eroare DB la actualizare depcred: {e}", exc_info=True)
             if conn:
                 conn.rollback()
-            afiseaza_eroare(f"Eroare la actualizarea datelor:\n{e}", parent=self)
+            afiseaza_eroare("Nu s-au putut salva modificările. Verificați că baza de date nu este ocupată de altă aplicație.", parent=self)
         finally:
             if conn:
                 conn.close()
+
+    def closeEvent(self, event):
+        """
+        Protecție anti-închidere fereastră când recalcularea rulează în background.
+        Previne corupția datelor dacă utilizatorul închide fereastra în timpul modificărilor DB.
+
+        BUG #3 FIX: Race condition protection pentru thread recalculare
+        """
+        if self._recalculation_running:
+            # Arată mesaj de avertizare - recalcularea e în curs
+            reply = QMessageBox.warning(
+                self,
+                "Recalculare în Desfășurare",
+                "⚠️ Recalcularea soldurilor este în desfășurare.\n\n"
+                "Închiderea ferestrei acum poate cauza inconsistențe în baza de date.\n\n"
+                "Doriți să așteptați finalizarea recalculării?\n"
+                "(Recomand: Așteptați finalizarea)",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes  # Default button
+            )
+
+            if reply == QMessageBox.Yes:
+                # Utilizatorul alege să aștepte - blochează închiderea
+                event.ignore()
+                logging.info("Închidere fereastră blocată - recalculare în curs")
+                # Actualizează mesajul de status pentru utilizator
+                self.lbl_recalc_status.setText("⏳ Așteptați finalizarea recalculării pentru a închide...")
+                self.lbl_recalc_status.setStyleSheet("QLabel { color: #ff6b6b; font-weight: bold; }")
+            else:
+                # Utilizatorul alege să închidă oricum (NU RECOMANDAT)
+                logging.warning("Fereastră închisă forțat în timpul recalculării - risc de inconsistențe!")
+                # Setăm flag-ul ca False pentru a permite cleanup-ul
+                self._recalculation_running = False
+                event.accept()
+        else:
+            # Nu e recalculare în curs - permite închiderea normală
+            event.accept()
 
 
 # --- Bloc de testare ---
