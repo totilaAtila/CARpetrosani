@@ -1,4 +1,3 @@
-# stergere_membru.py
 # Modificat pentru a șterge membri în loc de a-i lichida.
 # Aplicat design glossy 3D bombat modern din celelalte module.
 import os
@@ -742,31 +741,11 @@ class StergereMembruWidget(QWidget):
                 logging.debug(f"Căutare date pentru fișa: {target_nr_fisa}")
                 member_data_temp = self._get_member_data_from_membrii(target_nr_fisa)
                 if not member_data_temp:
-                    # Fișa nu există în MEMBRII.db, verificăm dacă există în DEPCRED.db
-                    logging.warning(f"Fișa {target_nr_fisa} nu există în MEMBRII.db. Se verifică în DEPCRED.db...")
-                    if self._check_member_exists_in_depcred(target_nr_fisa):
-                        # Fișa există în DEPCRED dar nu în MEMBRII - DISCREPANȚĂ DE INTEGRITATE
-                        logging.warning(f"⚠️ DISCREPANȚĂ: Fișa {target_nr_fisa} există în DEPCRED dar NU în MEMBRII!")
-                        afiseaza_warning(
-                            f"⚠️ ATENȚIE: Discrepanță de integritate detectată!\n\n"
-                            f"Fișa {target_nr_fisa} are istoric financiar în DEPCRED.db,\n"
-                            f"dar NU există înregistrare corespunzătoare în MEMBRII.db.\n\n"
-                            f"Acest membru va fi afișat cu date incomplete.\n"
-                            f"Recomandare: Verificați integritatea bazelor de date.",
-                            parent=self
-                        )
-                        # Continuăm încărcarea cu date limitate (fără nume, adresă, etc.)
-                        target_name = f"[FIȘĂ {target_nr_fisa} - Date incomplete]"
-                        self.txt_nume.setText(target_name)
-                        logging.debug(f"Se continuă cu date incomplete pentru fișa {target_nr_fisa}")
-                    else:
-                        # Fișa nu există nici în MEMBRII, nici în DEPCRED
-                        afiseaza_info(f"Fișa cu numărul {target_nr_fisa} nu există în nicio bază de date.", parent=self)
-                        return
-                else:
-                    target_name = member_data_temp.get("NUM_PREN", "")
-                    self.txt_nume.setText(target_name)
-                    logging.debug(f"Nume găsit: '{target_name}'")
+                    afiseaza_info(f"Fișa cu numărul {target_nr_fisa} nu există în baza de date.", parent=self)
+                    return
+                target_name = member_data_temp.get("NUM_PREN", "")
+                self.txt_nume.setText(target_name)
+                logging.debug(f"Nume găsit: '{target_name}'")
             else:
                 logging.warning("_load_member_data apelat fără nr_fisa sau nume.")
                 return
@@ -778,7 +757,6 @@ class StergereMembruWidget(QWidget):
             # Pas 3: Încărcăm datele personale din MEMBRII.db
             member_data = self._get_member_data_from_membrii(self._loaded_nr_fisa)
             if member_data:
-                # Datele personale există în MEMBRII.db (caz normal)
                 self.txt_adresa.setText(member_data.get("DOMICILIUL", ""))
                 self.txt_calitate.setText(member_data.get("CALITATEA", ""))
                 self.txt_data_insc.setText(member_data.get("DATA_INSCR", ""))
@@ -789,19 +767,9 @@ class StergereMembruWidget(QWidget):
                 self.txt_nr_fisa.setToolTip(str(self._loaded_nr_fisa))
                 self.txt_nume.setToolTip(target_name)
             else:
-                # Membru există doar în DEPCRED (discrepanță de integritate)
-                # Afișăm câmpuri goale pentru date personale, dar permitem ștergerea
-                logging.warning(f"Fișa {self._loaded_nr_fisa} nu are date personale în MEMBRII.db - se afișează doar istoric financiar")
-                self.txt_adresa.setText("[Date lipsă - doar istoric financiar]")
-                self.txt_calitate.setText("[Date lipsă]")
-                self.txt_data_insc.setText("[Date lipsă]")
-                # Setăm tooltip-uri explicative
-                self.txt_adresa.setToolTip("⚠️ Membru fără înregistrare în MEMBRII.db")
-                self.txt_calitate.setToolTip("⚠️ Membru fără înregistrare în MEMBRII.db")
-                self.txt_data_insc.setToolTip("⚠️ Membru fără înregistrare în MEMBRII.db")
-                self.txt_nr_fisa.setToolTip(f"⚠️ Fișă {self._loaded_nr_fisa} - Doar în DEPCRED.db")
-                self.txt_nume.setToolTip(target_name)
-                # Continuăm încărcarea - nu returnam!
+                afiseaza_eroare(f"Datele personale pentru fișa {self._loaded_nr_fisa} nu au putut fi recuperate.",
+                                parent=self)
+                return
 
             # Pas 4: Încărcăm datele financiare din DEPCRED.db
             self._populate_financial_data(self._loaded_nr_fisa)
@@ -1250,29 +1218,6 @@ class StergereMembruWidget(QWidget):
             if conn:
                 conn.close()
         return data
-
-    @staticmethod
-    def _check_member_exists_in_depcred(nr_fisa):
-        """
-        Verifică dacă există înregistrări pentru NR_FISA în DEPCRED.db.
-        Returnează True dacă există cel puțin o înregistrare, False altfel.
-        """
-        if not nr_fisa:
-            return False
-        conn = None
-        exists = False
-        try:
-            conn = sqlite3.connect(DB_DEPCRED, timeout=30.0)
-            cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM DEPCRED WHERE NR_FISA = ?", (nr_fisa,))
-            count = cur.fetchone()[0]
-            exists = count > 0
-        except sqlite3.Error as e:
-            logging.error(f"Eroare SQLite la _check_member_exists_in_depcred pentru fișa {nr_fisa}: {e}")
-        finally:
-            if conn:
-                conn.close()
-        return exists
 
 
 # =========================================
