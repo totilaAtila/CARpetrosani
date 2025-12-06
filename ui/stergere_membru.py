@@ -1202,7 +1202,7 @@ class StergereMembruWidget(QWidget):
     @staticmethod
     def _get_member_data_from_membrii(nr_fisa):
         """ Returnează datele personale (dicționar) pentru un NR_FISA dat din MEMBRII.db. """
-        if not nr_fisa:
+        if nr_fisa is None:
             return None
         conn = None
         member_data_result = None
@@ -1228,7 +1228,7 @@ class StergereMembruWidget(QWidget):
     @staticmethod
     def _get_member_details_depcred(nr_fisa):
         """ Returnează istoricul financiar (listă de tuple) pentru un NR_FISA dat din DEPCRED.db. """
-        if not nr_fisa:
+        if nr_fisa is None:
             return []
         data = []
         conn = None
@@ -1256,7 +1256,7 @@ class StergereMembruWidget(QWidget):
         Verifică dacă există înregistrări pentru NR_FISA în DEPCRED.db.
         Returnează True dacă există cel puțin o înregistrare, False altfel.
         """
-        if not nr_fisa:
+        if nr_fisa is None:
             return False
         conn = None
         exists = False
