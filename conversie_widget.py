@@ -468,10 +468,10 @@ class ConversieWorker(QThread):
         try:
             with sqlite3.connect(db_paths['activi'], timeout=30.0) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT NR_FISA, DEP_SOLD, DIVIDEND, BENEFICIU FROM ACTIVI")
+                cursor.execute("SELECT NR_FISA, DEP_SOLD, DIVIDEND FROM ACTIVI")
 
                 activi_records = cursor.fetchall()
-                campuri_monetare_activi = ['DEP_SOLD', 'DIVIDEND', 'BENEFICIU']
+                campuri_monetare_activi = ['DEP_SOLD', 'DIVIDEND']
 
                 for record in activi_records:
                     nr_fisa = record[0]
@@ -668,7 +668,7 @@ class ConversieWorker(QThread):
             "suma_rezultat_eur": Decimal("0.00"),
             "suma_teoretica_eur": Decimal("0.00"),
             "diferenta_rotunjire": Decimal("0.00"),
-            "campuri_procesate": ["DEP_SOLD", "DIVIDEND", "BENEFICIU"]
+            "campuri_procesate": ["DEP_SOLD", "DIVIDEND"]
         }
 
         try:
@@ -678,31 +678,29 @@ class ConversieWorker(QThread):
                 cursor.execute("SELECT COUNT(*) FROM ACTIVI")
                 rezultat["total_activi"] = cursor.fetchone()[0]
 
-                cursor.execute("SELECT NR_FISA, DEP_SOLD, DIVIDEND, BENEFICIU FROM ACTIVI")
+                cursor.execute("SELECT NR_FISA, DEP_SOLD, DIVIDEND FROM ACTIVI")
                 activi = cursor.fetchall()
 
                 # CONVERSIE DIRECTĂ CONFORM UE - FIECARE MEMBRU ACTIV INDEPENDENT
-                for nr_fisa, dep_sold, dividend, beneficiu in activi:
+                for nr_fisa, dep_sold, dividend in activi:
                     # Validează și convertește fiecare câmp individual
                     dep_sold_ron = self._validate_numeric_field(dep_sold, "DEP_SOLD", allow_zero=True)
                     dividend_ron = self._validate_numeric_field(dividend, "DIVIDEND", allow_zero=True)
-                    beneficiu_ron = self._validate_numeric_field(beneficiu, "BENEFICIU", allow_zero=True)
 
                     # CONVERSIE DIRECTĂ - CONFORM REGULAMENTULUI CE 1103/97
                     dep_sold_eur = (dep_sold_ron / curs).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
                     dividend_eur = (dividend_ron / curs).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-                    beneficiu_eur = (beneficiu_ron / curs).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
                     # Actualizează în baza de date
                     cursor.execute("""
-                        UPDATE ACTIVI SET 
-                            DEP_SOLD = ?, DIVIDEND = ?, BENEFICIU = ?
+                        UPDATE ACTIVI SET
+                            DEP_SOLD = ?, DIVIDEND = ?
                         WHERE NR_FISA = ?
-                    """, (float(dep_sold_eur), float(dividend_eur), float(beneficiu_eur), nr_fisa))
+                    """, (float(dep_sold_eur), float(dividend_eur), nr_fisa))
 
                     # Acumulează pentru statistici
-                    suma_ron_membru = dep_sold_ron + dividend_ron + beneficiu_ron
-                    suma_eur_membru = dep_sold_eur + dividend_eur + beneficiu_eur
+                    suma_ron_membru = dep_sold_ron + dividend_ron
+                    suma_eur_membru = dep_sold_eur + dividend_eur
 
                     rezultat["suma_originala_ron"] += suma_ron_membru
                     rezultat["suma_rezultat_eur"] += suma_eur_membru
@@ -1210,8 +1208,8 @@ class ConversieWidget(QWidget):
 
                     elif db_name == "ACTIVI":
                         cursor.execute("""
-                            SELECT COUNT(*), 
-                                   COALESCE(SUM(DEP_SOLD + DIVIDEND + BENEFICIU), 0)
+                            SELECT COUNT(*),
+                                   COALESCE(SUM(DEP_SOLD + DIVIDEND), 0)
                             FROM ACTIVI
                         """)
                         total_activi, suma_activi = cursor.fetchone()
