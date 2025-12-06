@@ -289,7 +289,8 @@ class FileLockManager:
                     lock_file.close()
                     try:
                         os.unlink(lock_file_path)
-                    except:
+                    except (OSError, PermissionError):
+                        # Ignorăm erorile la ștergerea fișierului lock temporar
                         pass
                     return False
             else:
@@ -308,7 +309,8 @@ class FileLockManager:
                     lock_file.close()
                     try:
                         os.unlink(lock_file_path)
-                    except:
+                    except (OSError, PermissionError):
+                        # Ignorăm erorile la ștergerea fișierului lock temporar
                         pass
                     return False
 
